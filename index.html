@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d0d12">
+  <title>IronLog</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "preact": "https://esm.sh/preact@10.23.1",
+      "preact/hooks": "https://esm.sh/preact@10.23.1/hooks",
+      "htm/preact": "https://esm.sh/htm@3.1.1/preact?external=preact"
+    }
+  }
+  </script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       RESET & CUSTOM PROPERTIES
+       ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0d0d12;
+      --bg-card: #1a1a2e;
+      --bg-input: #252540;
+      --bg-hover: #2e2e4a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --text-muted: #555570;
+      --accent-green: #00c853;
+      --accent-red: #ff1744;
+      --accent-amber: #ffab00;
+      --accent-blue: #2979ff;
+      --accent-purple: #7c4dff;
+      --border: #2a2a3e;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: -apple-system, 'SF Pro Display', system-ui, sans-serif;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100%;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYOUT
+       ═══════════════════════════════════════════════════════════════ */
+    .screen {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px 16px calc(72px + var(--safe-bottom));
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       BOTTOM NAV
+       ═══════════════════════════════════════════════════════════════ */
+    .nav {
+      display: flex;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding-bottom: var(--safe-bottom);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-item.active { color: var(--accent-blue); }
+    .nav-item svg { width: 24px; height: 24px; margin-bottom: 3px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CARDS
+       ═══════════════════════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       INPUTS
+       ═══════════════════════════════════════════════════════════════ */
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent-blue);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       BUTTONS
+       ═══════════════════════════════════════════════════════════════ */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      width: 100%;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent-blue); color: white; }
+    .btn-success { background: var(--accent-green); color: white; }
+    .btn-danger { background: var(--accent-red); color: white; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-sm {
+      padding: 8px 16px;
+      font-size: 14px;
+      width: auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       WEIGHT INPUT STEPPER
+       ═══════════════════════════════════════════════════════════════ */
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stepper-btn {
+      min-width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .stepper-btn:active { background: var(--bg-hover); }
+
+    .stepper-value {
+      min-width: 64px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stepper-unit {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SET ROW
+       ═══════════════════════════════════════════════════════════════ */
+    .set-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .set-row:last-child { border-bottom: none; }
+
+    .set-num {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 32px;
+    }
+
+    .set-inputs {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .set-check {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
+    .set-check.done {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+    }
+
+    .set-check.failed {
+      background: var(--accent-red);
+      border-color: var(--accent-red);
+      color: white;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PROGRAM SELECTOR
+       ═══════════════════════════════════════════════════════════════ */
+    .program-option {
+      padding: 14px;
+      background: var(--bg-input);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .program-option.selected {
+      border-color: var(--accent-blue);
+    }
+
+    .program-option .name {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .program-option .exercises {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       EXERCISE CARD IN WORKOUT
+       ═══════════════════════════════════════════════════════════════ */
+    .exercise-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .exercise-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .exercise-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .exercise-target {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .exercise-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+
+    .exercise-badge.pending {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-secondary);
+    }
+
+    .exercise-badge.partial {
+      background: rgba(255,171,0,0.15);
+      color: var(--accent-amber);
+    }
+
+    .exercise-badge.complete {
+      background: rgba(0,200,83,0.15);
+      color: var(--accent-green);
+    }
+
+    .exercise-body {
+      padding: 0 16px 14px;
+    }
+
+    .exercise-rec {
+      font-size: 12px;
+      color: var(--accent-blue);
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: rgba(41,121,255,0.08);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MUSCLE MAP
+       ═══════════════════════════════════════════════════════════════ */
+    .muscle-map-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .muscle-view {
+      text-align: center;
+    }
+
+    .muscle-view .view-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .muscle-map-container svg {
+      width: 100%;
+      max-width: 140px;
+      height: auto;
+    }
+
+    .muscle-map-container.mini svg {
+      max-width: 90px;
+    }
+
+    .muscle-region {
+      fill: #1e1e30;
+      stroke: #333350;
+      stroke-width: 0.5;
+      transition: fill 0.3s ease;
+    }
+
+    .muscle-region.planned {
+      fill: var(--accent-red);
+      fill-opacity: 0.6;
+    }
+
+    .muscle-region.completed {
+      fill: var(--accent-green);
+      fill-opacity: 0.8;
+    }
+
+    .muscle-region.partial {
+      fill: var(--accent-amber);
+      fill-opacity: 0.7;
+    }
+
+    .body-outline {
+      fill: none;
+      stroke: #333350;
+      stroke-width: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LEGEND
+       ═══════════════════════════════════════════════════════════════ */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HISTORY
+       ═══════════════════════════════════════════════════════════════ */
+    .history-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .history-date {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .history-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .history-exercises {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .history-ex-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .history-ex-tag.success {
+      background: rgba(0,200,83,0.12);
+      color: var(--accent-green);
+    }
+
+    .history-ex-tag.fail {
+      background: rgba(255,23,68,0.12);
+      color: var(--accent-red);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PROGRESS CHART
+       ═══════════════════════════════════════════════════════════════ */
+    .chart-container {
+      margin-top: 12px;
+    }
+
+    .chart-container svg {
+      width: 100%;
+      height: 150px;
+    }
+
+    .chart-bar {
+      fill: var(--accent-blue);
+      rx: 3;
+    }
+
+    .chart-bar.fail {
+      fill: var(--accent-red);
+      fill-opacity: 0.6;
+    }
+
+    .chart-label {
+      fill: var(--text-muted);
+      font-size: 9px;
+      text-anchor: middle;
+    }
+
+    .chart-value {
+      fill: var(--text-secondary);
+      font-size: 10px;
+      text-anchor: middle;
+      font-weight: 600;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SESSION HEADER
+       ═══════════════════════════════════════════════════════════════ */
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .session-header .info {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .session-header .meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       FEELING CHECK
+       ═══════════════════════════════════════════════════════════════ */
+    .feeling-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .feeling-btn {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-family: var(--font);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .feeling-btn.selected {
+      border-color: var(--accent-blue);
+      color: var(--text-primary);
+      background: rgba(41,121,255,0.1);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       EMPTY STATE
+       ═══════════════════════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MINI STEPPER (for reps)
+       ═══════════════════════════════════════════════════════════════ */
+    .mini-stepper {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .mini-stepper .stepper-btn {
+      min-width: 36px;
+      height: 36px;
+      font-size: 14px;
+    }
+
+    .mini-stepper .stepper-value {
+      min-width: 32px;
+      font-size: 18px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       DETAIL VIEW
+       ═══════════════════════════════════════════════════════════════ */
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .detail-row:last-child { border-bottom: none; }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      font-size: 14px;
+      font-family: var(--font);
+      cursor: pointer;
+      padding: 4px 0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TIMER
+       ═══════════════════════════════════════════════════════════════ */
+    .timer {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       ANIMATIONS
+       ═══════════════════════════════════════════════════════════════ */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCROLLBAR
+       ═══════════════════════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1: IMPORTS
+// ═══════════════════════════════════════════════════════════════
+import { render } from 'preact';
+import { useState, useEffect, useReducer, useCallback, useRef, useMemo } from 'preact/hooks';
+import { html } from 'htm/preact';
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 2: CONSTANTS & DATA
+// ═══════════════════════════════════════════════════════════════
+
+const MUSCLE_GROUPS = {
+  chest:       { label: 'Chest',       view: 'front' },
+  front_delts: { label: 'Front Delts', view: 'front' },
+  side_delts:  { label: 'Side Delts',  view: 'both'  },
+  biceps:      { label: 'Biceps',      view: 'front' },
+  forearms:    { label: 'Forearms',    view: 'both'  },
+  abs:         { label: 'Abs',         view: 'front' },
+  obliques:    { label: 'Obliques',    view: 'front' },
+  quads:       { label: 'Quads',       view: 'front' },
+  rear_delts:  { label: 'Rear Delts',  view: 'back'  },
+  triceps:     { label: 'Triceps',     view: 'back'  },
+  upper_back:  { label: 'Upper Back',  view: 'back'  },
+  lats:        { label: 'Lats',        view: 'back'  },
+  lower_back:  { label: 'Lower Back',  view: 'back'  },
+  glutes:      { label: 'Glutes',      view: 'back'  },
+  hamstrings:  { label: 'Hamstrings',  view: 'back'  },
+  calves:      { label: 'Calves',      view: 'back'  },
+};
+
+const EXERCISES = {
+  squat: {
+    id: 'squat', name: 'Squat', category: 'compound',
+    primaryMuscles: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings', 'lower_back', 'abs'],
+    defaultSets: 3, defaultReps: 5, incrementLbs: 5,
+  },
+  bench_press: {
+    id: 'bench_press', name: 'Bench Press', category: 'compound',
+    primaryMuscles: ['chest', 'front_delts'],
+    secondaryMuscles: ['triceps'],
+    defaultSets: 3, defaultReps: 5, incrementLbs: 2.5,
+  },
+  overhead_press: {
+    id: 'overhead_press', name: 'Overhead Press', category: 'compound',
+    primaryMuscles: ['front_delts', 'side_delts'],
+    secondaryMuscles: ['triceps', 'upper_back'],
+    defaultSets: 3, defaultReps: 5, incrementLbs: 2.5,
+  },
+  deadlift: {
+    id: 'deadlift', name: 'Deadlift', category: 'compound',
+    primaryMuscles: ['hamstrings', 'glutes', 'lower_back'],
+    secondaryMuscles: ['quads', 'upper_back', 'lats', 'forearms'],
+    defaultSets: 1, defaultReps: 5, incrementLbs: 5,
+  },
+  barbell_row: {
+    id: 'barbell_row', name: 'Barbell Row', category: 'compound',
+    primaryMuscles: ['upper_back', 'lats'],
+    secondaryMuscles: ['rear_delts', 'biceps', 'forearms', 'lower_back'],
+    defaultSets: 3, defaultReps: 5, incrementLbs: 5,
+  },
+  face_pull: {
+    id: 'face_pull', name: 'Face Pull', category: 'accessory',
+    primaryMuscles: ['rear_delts', 'upper_back'],
+    secondaryMuscles: ['side_delts'],
+    defaultSets: 3, defaultReps: 15, incrementLbs: 5,
+  },
+  lat_pulldown: {
+    id: 'lat_pulldown', name: 'Lat Pulldown', category: 'accessory',
+    primaryMuscles: ['lats', 'upper_back'],
+    secondaryMuscles: ['biceps', 'rear_delts', 'forearms'],
+    defaultSets: 3, defaultReps: 10, incrementLbs: 5,
+  },
+  chin_up: {
+    id: 'chin_up', name: 'Chin-Up', category: 'compound',
+    primaryMuscles: ['lats', 'biceps'],
+    secondaryMuscles: ['upper_back', 'forearms'],
+    defaultSets: 3, defaultReps: 8, incrementLbs: 5,
+  },
+  dip: {
+    id: 'dip', name: 'Dip', category: 'compound',
+    primaryMuscles: ['chest', 'triceps'],
+    secondaryMuscles: ['front_delts'],
+    defaultSets: 3, defaultReps: 8, incrementLbs: 5,
+  },
+  romanian_deadlift: {
+    id: 'romanian_deadlift', name: 'Romanian Deadlift', category: 'compound',
+    primaryMuscles: ['hamstrings', 'glutes'],
+    secondaryMuscles: ['lower_back'],
+    defaultSets: 3, defaultReps: 8, incrementLbs: 5,
+  },
+  leg_press: {
+    id: 'leg_press', name: 'Leg Press', category: 'compound',
+    primaryMuscles: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    defaultSets: 3, defaultReps: 10, incrementLbs: 10,
+  },
+  calf_raise: {
+    id: 'calf_raise', name: 'Calf Raise', category: 'accessory',
+    primaryMuscles: ['calves'],
+    secondaryMuscles: [],
+    defaultSets: 3, defaultReps: 15, incrementLbs: 5,
+  },
+  barbell_curl: {
+    id: 'barbell_curl', name: 'Barbell Curl', category: 'accessory',
+    primaryMuscles: ['biceps'],
+    secondaryMuscles: ['forearms'],
+    defaultSets: 3, defaultReps: 10, incrementLbs: 2.5,
+  },
+  tricep_pushdown: {
+    id: 'tricep_pushdown', name: 'Tricep Pushdown', category: 'accessory',
+    primaryMuscles: ['triceps'],
+    secondaryMuscles: [],
+    defaultSets: 3, defaultReps: 12, incrementLbs: 5,
+  },
+};
+
+const PROGRAMS = {
+  A: {
+    id: 'A', name: 'Workout A',
+    exercises: [
+      { exerciseId: 'squat',       sets: 3, reps: 5  },
+      { exerciseId: 'bench_press', sets: 3, reps: 5  },
+      { exerciseId: 'barbell_row', sets: 3, reps: 5  },
+      { exerciseId: 'face_pull',   sets: 3, reps: 15 },
+    ]
+  },
+  B: {
+    id: 'B', name: 'Workout B',
+    exercises: [
+      { exerciseId: 'squat',          sets: 3, reps: 5  },
+      { exerciseId: 'overhead_press', sets: 3, reps: 5  },
+      { exerciseId: 'deadlift',       sets: 1, reps: 5  },
+      { exerciseId: 'lat_pulldown',   sets: 3, reps: 10 },
+    ]
+  }
+};
+
+const MAX_CONSECUTIVE_FAILURES = 3;
+const DELOAD_PERCENT = 0.10;
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 3: STORAGE
+// ═══════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'ironlog_v1';
+const CURRENT_VERSION = 1;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state) {
+  const { screen, expandedExercise, detailView, ...persistable } = state;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    ...persistable,
+    version: CURRENT_VERSION,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 4: BUSINESS LOGIC
+// ═══════════════════════════════════════════════════════════════
+
+function roundToNearest(weight, increment) {
+  return Math.round(weight / increment) * increment;
+}
+
+function calculateNextWeight(exerciseId, exerciseHistory) {
+  const history = exerciseHistory[exerciseId];
+  if (!history || history.history.length === 0) return null;
+
+  const lastEntry = history.history[0];
+  const lastWeight = lastEntry.weight;
+  const increment = EXERCISES[exerciseId]?.incrementLbs || 5;
+
+  if (history.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+    const deloadWeight = roundToNearest(lastWeight * (1 - DELOAD_PERCENT), 2.5);
+    return { weight: deloadWeight, reason: 'deload', message: `Deload: 3 fails at ${lastWeight}. Try ${deloadWeight}.` };
+  }
+
+  if (!lastEntry.allCompleted) {
+    return { weight: lastWeight, reason: 'retry', message: `Retry ${lastWeight} (missed reps last time)` };
+  }
+
+  const nextWeight = lastWeight + increment;
+  return { weight: nextWeight, reason: 'progress', message: `+${increment} lbs from last session` };
+}
+
+function determineNextProgram(lastProgramId) {
+  if (!lastProgramId) return 'A';
+  return lastProgramId === 'A' ? 'B' : 'A';
+}
+
+function getPlannedMuscles(programId) {
+  const program = PROGRAMS[programId];
+  if (!program) return [];
+  const muscles = new Set();
+  program.exercises.forEach(pe => {
+    const ex = EXERCISES[pe.exerciseId];
+    if (ex) {
+      ex.primaryMuscles.forEach(m => muscles.add(m));
+      ex.secondaryMuscles.forEach(m => muscles.add(m));
+    }
+  });
+  return [...muscles];
+}
+
+function getCompletedMuscles(sessionExercises) {
+  const muscles = new Set();
+  if (!sessionExercises) return [];
+  sessionExercises.forEach(se => {
+    const allDone = se.sets.every(s => s.completed);
+    if (allDone) {
+      const ex = EXERCISES[se.exerciseId];
+      if (ex) {
+        ex.primaryMuscles.forEach(m => muscles.add(m));
+        ex.secondaryMuscles.forEach(m => muscles.add(m));
+      }
+    }
+  });
+  return [...muscles];
+}
+
+function getPartialMuscles(sessionExercises) {
+  const muscles = new Set();
+  const completed = new Set(getCompletedMuscles(sessionExercises));
+  if (!sessionExercises) return [];
+  sessionExercises.forEach(se => {
+    const anyDone = se.sets.some(s => s.completed);
+    const allDone = se.sets.every(s => s.completed);
+    if (anyDone && !allDone) {
+      const ex = EXERCISES[se.exerciseId];
+      if (ex) {
+        ex.primaryMuscles.forEach(m => { if (!completed.has(m)) muscles.add(m); });
+        ex.secondaryMuscles.forEach(m => { if (!completed.has(m)) muscles.add(m); });
+      }
+    }
+  });
+  return [...muscles];
+}
+
+function updateExerciseHistory(exerciseHistory, exerciseId, weight, allCompleted, date) {
+  const existing = exerciseHistory[exerciseId] || {
+    lastWeight: 0, lastCompleted: false, consecutiveFailures: 0, history: []
+  };
+
+  let consecutiveFailures = existing.consecutiveFailures;
+  if (allCompleted) {
+    consecutiveFailures = 0;
+  } else if (weight === existing.lastWeight) {
+    consecutiveFailures += 1;
+  } else {
+    consecutiveFailures = 1;
+  }
+
+  return {
+    lastWeight: weight,
+    lastCompleted: allCompleted,
+    consecutiveFailures,
+    history: [
+      { date, weight, allCompleted },
+      ...existing.history.slice(0, 49)
+    ]
+  };
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+function nowTimeStr() {
+  const d = new Date();
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 5: SVG MUSCLE MAP
+// ═══════════════════════════════════════════════════════════════
+
+// Front body paths - simplified anatomical SVG
+const FRONT_PATHS = {
+  chest: [
+    // Left pec
+    'M72,105 C74,95 87,92 100,95 L100,118 C92,122 78,120 72,112 Z',
+    // Right pec
+    'M128,105 C126,95 113,92 100,95 L100,118 C108,122 122,120 128,112 Z',
+  ],
+  front_delts: [
+    'M65,90 C63,82 68,78 75,80 L78,95 C72,98 66,96 65,90 Z',
+    'M135,90 C137,82 132,78 125,80 L122,95 C128,98 134,96 135,90 Z',
+  ],
+  side_delts: [
+    'M60,85 C58,78 62,74 65,76 L65,92 C62,94 59,91 60,85 Z',
+    'M140,85 C142,78 138,74 135,76 L135,92 C138,94 141,91 140,85 Z',
+  ],
+  biceps: [
+    'M58,100 C56,95 58,92 62,93 L64,118 C60,120 57,114 58,100 Z',
+    'M142,100 C144,95 142,92 138,93 L136,118 C140,120 143,114 142,100 Z',
+  ],
+  forearms: [
+    'M54,122 C52,118 56,115 60,118 L58,152 C55,152 53,140 54,122 Z',
+    'M146,122 C148,118 144,115 140,118 L142,152 C145,152 147,140 146,122 Z',
+  ],
+  abs: [
+    'M88,122 L88,170 C88,172 95,172 100,172 C105,172 112,172 112,170 L112,122 C108,120 92,120 88,122 Z',
+  ],
+  obliques: [
+    'M75,125 L88,122 L88,172 L78,168 C74,160 73,140 75,125 Z',
+    'M125,125 L112,122 L112,172 L122,168 C126,160 127,140 125,125 Z',
+  ],
+  quads: [
+    'M78,180 C76,175 80,172 88,175 L90,240 C85,242 76,230 78,180 Z',
+    'M122,180 C124,175 120,172 112,175 L110,240 C115,242 124,230 122,180 Z',
+  ],
+  calves_front: [
+    'M82,255 C80,250 84,248 90,250 L89,300 C85,302 81,280 82,255 Z',
+    'M118,255 C120,250 116,248 110,250 L111,300 C115,302 119,280 118,255 Z',
+  ],
+};
+
+// Back body paths
+const BACK_PATHS = {
+  upper_back: [
+    'M78,90 C82,85 92,84 100,85 L100,115 C92,118 80,116 78,108 Z',
+    'M122,90 C118,85 108,84 100,85 L100,115 C108,118 120,116 122,108 Z',
+  ],
+  rear_delts: [
+    'M62,82 C60,76 64,73 70,76 L72,92 C67,94 63,90 62,82 Z',
+    'M138,82 C140,76 136,73 130,76 L128,92 C133,94 137,90 138,82 Z',
+  ],
+  triceps: [
+    'M56,96 C54,92 57,88 62,90 L64,118 C59,120 55,110 56,96 Z',
+    'M144,96 C146,92 143,88 138,90 L136,118 C141,120 145,110 144,96 Z',
+  ],
+  lats: [
+    'M72,108 C70,100 76,96 82,100 L84,140 C78,142 71,128 72,108 Z',
+    'M128,108 C130,100 124,96 118,100 L116,140 C122,142 129,128 128,108 Z',
+  ],
+  lower_back: [
+    'M86,140 L86,172 C86,174 100,175 100,175 C100,175 114,174 114,172 L114,140 C108,138 92,138 86,140 Z',
+  ],
+  glutes: [
+    'M78,175 C76,172 82,170 92,174 L92,200 C84,202 77,192 78,175 Z',
+    'M122,175 C124,172 118,170 108,174 L108,200 C116,202 123,192 122,175 Z',
+  ],
+  hamstrings: [
+    'M80,205 C78,200 82,198 90,200 L89,250 C84,252 79,235 80,205 Z',
+    'M120,205 C122,200 118,198 110,200 L111,250 C116,252 121,235 120,205 Z',
+  ],
+  calves: [
+    'M82,255 C80,250 84,248 90,250 L89,300 C85,302 81,280 82,255 Z',
+    'M118,255 C120,250 116,248 110,250 L111,300 C115,302 119,280 118,255 Z',
+  ],
+};
+
+// Front body outline
+const FRONT_OUTLINE = 'M100,10 C90,10 82,18 82,28 C82,38 88,46 88,52 C82,52 68,62 62,72 C56,72 52,78 52,86 C50,96 48,108 50,120 C52,132 50,148 48,158 C46,162 50,164 54,162 L62,130 C66,124 68,118 70,112 C72,118 74,130 76,142 C76,152 74,165 74,175 C72,185 74,200 76,215 C78,230 80,242 80,250 C78,260 76,275 78,290 C80,305 82,315 86,320 C90,318 94,316 96,314 L94,270 C94,258 92,248 92,240 C94,232 96,220 98,210 L100,200 L102,210 C104,220 106,232 108,240 C108,248 106,258 106,270 L104,314 C106,316 110,318 114,320 C118,315 120,305 122,290 C124,275 122,260 120,250 C120,242 122,230 124,215 C126,200 128,185 126,175 C126,165 124,152 124,142 C126,130 128,118 130,112 C132,118 134,124 138,130 L146,162 C150,164 154,162 152,158 C150,148 148,132 150,120 C152,108 150,96 148,86 C148,78 144,72 138,72 C132,62 118,52 112,52 C112,46 118,38 118,28 C118,18 110,10 100,10 Z';
+
+// Back body outline (similar shape)
+const BACK_OUTLINE = 'M100,10 C90,10 82,18 82,28 C82,38 88,46 88,52 C82,52 68,62 62,72 C56,72 52,78 52,86 C50,96 48,108 50,120 C52,132 50,148 48,158 C46,162 50,164 54,162 L62,130 C66,124 68,118 70,112 C72,118 74,130 76,142 C76,152 74,165 74,175 C72,185 74,200 76,215 C78,230 80,242 80,250 C78,260 76,275 78,290 C80,305 82,315 86,320 C90,318 94,316 96,314 L94,270 C94,258 92,248 92,240 C94,232 96,220 98,210 L100,200 L102,210 C104,220 106,232 108,240 C108,248 106,258 106,270 L104,314 C106,316 110,318 114,320 C118,315 120,305 122,290 C124,275 122,260 120,250 C120,242 122,230 124,215 C126,200 128,185 126,175 C126,165 124,152 124,142 C126,130 128,118 130,112 C132,118 134,124 138,130 L146,162 C150,164 154,162 152,158 C150,148 148,132 150,120 C152,108 150,96 148,86 C148,78 144,72 138,72 C132,62 118,52 112,52 C112,46 118,38 118,28 C118,18 110,10 100,10 Z';
+
+function getMuscleClass(muscleId, planned, completed, partial) {
+  if (completed.includes(muscleId)) return 'completed';
+  if (partial.includes(muscleId)) return 'partial';
+  if (planned.includes(muscleId)) return 'planned';
+  return '';
+}
+
+function MuscleMapSVG({ view, planned, completed, partial, paths, outline }) {
+  return html`
+    <div class="muscle-view">
+      <div class="view-label">${view}</div>
+      <svg viewBox="30 0 140 330">
+        <path d="${outline}" class="body-outline" />
+        ${Object.entries(paths).map(([muscleId, pathList]) =>
+          pathList.map(d => html`
+            <path
+              d="${d}"
+              class="muscle-region ${getMuscleClass(muscleId.replace('_front',''), planned, completed, partial)}"
+            />
+          `)
+        )}
+      </svg>
+    </div>
+  `;
+}
+
+function MuscleMap({ planned = [], completed = [], partial = [], mini = false }) {
+  return html`
+    <div class="muscle-map-container ${mini ? 'mini' : ''}">
+      <${MuscleMapSVG}
+        view="FRONT"
+        planned=${planned}
+        completed=${completed}
+        partial=${partial}
+        paths=${FRONT_PATHS}
+        outline=${FRONT_OUTLINE}
+      />
+      <${MuscleMapSVG}
+        view="BACK"
+        planned=${planned}
+        completed=${completed}
+        partial=${partial}
+        paths=${BACK_PATHS}
+        outline=${BACK_OUTLINE}
+      />
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent-red)"></div> Planned</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent-amber)"></div> In Progress</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent-green)"></div> Completed</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 6: REDUCER
+// ═══════════════════════════════════════════════════════════════
+
+const defaultState = {
+  screen: 'start',
+  activeSession: null,
+  sessions: [],
+  exerciseHistory: {},
+  settings: { weightUnit: 'lbs', lastLockerNumber: '' },
+  lastProgramId: null,
+  expandedExercise: 0,
+  detailView: null,
+};
+
+function initState() {
+  const saved = loadState();
+  if (!saved) return defaultState;
+  return {
+    ...defaultState,
+    sessions: saved.sessions || [],
+    exerciseHistory: saved.exerciseHistory || {},
+    settings: saved.settings || defaultState.settings,
+    lastProgramId: saved.lastProgramId || null,
+    activeSession: saved.activeSession || null,
+    screen: saved.activeSession ? 'workout' : 'start',
+  };
+}
+
+function appReducer(state, action) {
+  switch (action.type) {
+    case 'START_SESSION': {
+      const { startTime, lockerNumber, programId } = action;
+      const program = PROGRAMS[programId];
+      const exercises = program.exercises.map(pe => ({
+        exerciseId: pe.exerciseId,
+        targetSets: pe.sets,
+        targetReps: pe.reps,
+        sets: Array.from({ length: pe.sets }, () => {
+          const rec = calculateNextWeight(pe.exerciseId, state.exerciseHistory);
+          return {
+            weight: rec ? rec.weight : 0,
+            reps: pe.reps,
+            completed: false,
+          };
+        }),
+      }));
+      return {
+        ...state,
+        screen: 'workout',
+        expandedExercise: 0,
+        activeSession: {
+          id: 'session_' + Date.now(),
+          date: todayStr(),
+          startTime,
+          endTime: null,
+          lockerNumber,
+          programId,
+          exercises,
+        },
+        settings: { ...state.settings, lastLockerNumber: lockerNumber },
+      };
+    }
+
+    case 'UPDATE_SET': {
+      const { exerciseIndex, setIndex, field, value } = action;
+      const session = { ...state.activeSession };
+      const exercises = session.exercises.map((e, ei) => {
+        if (ei !== exerciseIndex) return e;
+        const sets = e.sets.map((s, si) => {
+          if (si !== setIndex) return s;
+          return { ...s, [field]: value };
+        });
+        return { ...e, sets };
+      });
+      return { ...state, activeSession: { ...session, exercises } };
+    }
+
+    case 'TOGGLE_SET_COMPLETE': {
+      const { exerciseIndex, setIndex } = action;
+      const session = { ...state.activeSession };
+      const exercises = session.exercises.map((e, ei) => {
+        if (ei !== exerciseIndex) return e;
+        const sets = e.sets.map((s, si) => {
+          if (si !== setIndex) return s;
+          return { ...s, completed: !s.completed };
+        });
+        return { ...e, sets };
+      });
+      return { ...state, activeSession: { ...session, exercises } };
+    }
+
+    case 'SET_EXPANDED': {
+      return { ...state, expandedExercise: action.index };
+    }
+
+    case 'END_SESSION': {
+      const session = { ...state.activeSession, endTime: nowTimeStr() };
+      const newHistory = { ...state.exerciseHistory };
+
+      session.exercises.forEach(se => {
+        const maxWeight = Math.max(...se.sets.map(s => s.weight));
+        const allCompleted = se.sets.every(s => s.completed && s.reps >= se.targetReps);
+        newHistory[se.exerciseId] = updateExerciseHistory(
+          newHistory, se.exerciseId, maxWeight, allCompleted, session.date
+        );
+      });
+
+      return {
+        ...state,
+        screen: 'start',
+        activeSession: null,
+        sessions: [...state.sessions, session],
+        exerciseHistory: newHistory,
+        lastProgramId: session.programId,
+      };
+    }
+
+    case 'NAVIGATE': {
+      return { ...state, screen: action.screen, detailView: null };
+    }
+
+    case 'VIEW_DETAIL': {
+      return { ...state, detailView: action.detail };
+    }
+
+    case 'BACK_FROM_DETAIL': {
+      return { ...state, detailView: null };
+    }
+
+    default:
+      return state;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 7: COMPONENTS
+// ═══════════════════════════════════════════════════════════════
+
+// --- Stepper (for weight) ---
+function WeightStepper({ value, onChange }) {
+  return html`
+    <div class="stepper">
+      <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 5))}>-5</button>
+      <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 2.5))}>-2.5</button>
+      <div class="stepper-value">${value}<span class="stepper-unit"> lbs</span></div>
+      <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
+      <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
+    </div>
+  `;
+}
+
+// --- Mini Stepper (for reps) ---
+function RepStepper({ value, onChange }) {
+  return html`
+    <div class="mini-stepper">
+      <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 1))}>-</button>
+      <div class="stepper-value">${value}</div>
+      <button class="stepper-btn" onClick=${() => onChange(value + 1)}>+</button>
+    </div>
+  `;
+}
+
+// --- Nav Bar ---
+function NavBar({ screen, dispatch }) {
+  const items = [
+    { id: 'start', label: 'Workout', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h11M4 12h16M6.5 17.5h11"/><circle cx="4" cy="6.5" r="2"/><circle cx="20" cy="6.5" r="2"/><circle cx="4" cy="17.5" r="2"/><circle cx="20" cy="17.5" r="2"/></svg>` },
+    { id: 'muscles', label: 'Muscles', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z"/><path d="M8 14v2a4 4 0 008 0v-2"/><path d="M12 18v4"/></svg>` },
+    { id: 'history', label: 'History', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+  ];
+
+  return html`
+    <nav class="nav">
+      ${items.map(item => html`
+        <button
+          class="nav-item ${screen === item.id || (screen === 'workout' && item.id === 'start') ? 'active' : ''}"
+          onClick=${() => dispatch({ type: 'NAVIGATE', screen: item.id })}
+        >
+          ${item.icon}
+          ${item.label}
+        </button>
+      `)}
+    </nav>
+  `;
+}
+
+// --- Start Session Screen ---
+function StartScreen({ state, dispatch }) {
+  const nextProgram = determineNextProgram(state.lastProgramId);
+  const [selectedProgram, setSelectedProgram] = useState(nextProgram);
+  const [startTime, setStartTime] = useState(nowTimeStr());
+  const [locker, setLocker] = useState(state.settings.lastLockerNumber);
+  const [feeling, setFeeling] = useState(null);
+
+  const plannedMuscles = getPlannedMuscles(selectedProgram);
+
+  return html`
+    <div class="screen fade-in">
+      <div class="screen-title">IronLog</div>
+
+      <div class="input-group">
+        <label class="input-label">How are you feeling?</label>
+        <div class="feeling-row">
+          ${['Great', 'OK', 'Off'].map(f => html`
+            <button
+              class="feeling-btn ${feeling === f ? 'selected' : ''}"
+              onClick=${() => setFeeling(f)}
+            >${f}</button>
+          `)}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px">
+        <div class="input-group" style="flex:1">
+          <label class="input-label">Start Time</label>
+          <input
+            type="time"
+            class="input-field"
+            value=${startTime}
+            onInput=${e => setStartTime(e.target.value)}
+          />
+        </div>
+        <div class="input-group" style="flex:1">
+          <label class="input-label">Locker #</label>
+          <input
+            type="number"
+            class="input-field"
+            value=${locker}
+            onInput=${e => setLocker(e.target.value)}
+            placeholder="—"
+            inputmode="numeric"
+          />
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Workout</label>
+        ${Object.entries(PROGRAMS).map(([id, prog]) => html`
+          <div
+            class="program-option ${selectedProgram === id ? 'selected' : ''}"
+            onClick=${() => setSelectedProgram(id)}
+          >
+            <div class="name">${prog.name}${id === nextProgram ? ' (Next)' : ''}</div>
+            <div class="exercises">
+              ${prog.exercises.map(pe => {
+                const ex = EXERCISES[pe.exerciseId];
+                const rec = calculateNextWeight(pe.exerciseId, state.exerciseHistory);
+                return html`<div>${ex.name} ${pe.sets}x${pe.reps}${rec ? ` @ ${rec.weight} lbs` : ''}</div>`;
+              })}
+            </div>
+          </div>
+        `)}
+      </div>
+
+      <${MuscleMap} planned=${plannedMuscles} completed=${[]} partial=${[]} mini=${true} />
+
+      <button
+        class="btn btn-success"
+        style="margin-top:8px;font-size:18px;padding:16px"
+        onClick=${() => dispatch({
+          type: 'START_SESSION',
+          startTime,
+          lockerNumber: locker,
+          programId: selectedProgram,
+        })}
+      >
+        Start Workout
+      </button>
+    </div>
+  `;
+}
+
+// --- Active Workout Screen ---
+function WorkoutScreen({ state, dispatch }) {
+  const session = state.activeSession;
+  if (!session) return null;
+
+  const planned = getPlannedMuscles(session.programId);
+  const completed = getCompletedMuscles(session.exercises);
+  const partial = getPartialMuscles(session.exercises);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+
+  return html`
+    <div class="screen fade-in">
+      <div class="session-header">
+        <div>
+          <div class="info">${PROGRAMS[session.programId]?.name || 'Workout'}</div>
+          <div class="meta">${formatTime(session.startTime)}${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}</div>
+        </div>
+        <${ElapsedTimer} startTime=${session.startTime} />
+      </div>
+
+      <${MuscleMap} planned=${planned} completed=${completed} partial=${partial} mini=${true} />
+
+      ${session.exercises.map((se, ei) => html`
+        <${ExerciseCard}
+          key=${se.exerciseId}
+          exerciseLog=${se}
+          exerciseIndex=${ei}
+          expanded=${state.expandedExercise === ei}
+          exerciseHistory=${state.exerciseHistory}
+          dispatch=${dispatch}
+        />
+      `)}
+
+      <div style="margin-top:16px">
+        ${showEndConfirm ? html`
+          <div class="card">
+            <p style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">End this workout?</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-danger" style="flex:1" onClick=${() => dispatch({ type: 'END_SESSION' })}>End Workout</button>
+              <button class="btn btn-ghost" style="flex:1" onClick=${() => setShowEndConfirm(false)}>Cancel</button>
+            </div>
+          </div>
+        ` : html`
+          <button class="btn btn-ghost" onClick=${() => setShowEndConfirm(true)}>End Workout</button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function ElapsedTimer({ startTime }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    function update() {
+      const [h, m] = startTime.split(':').map(Number);
+      const start = new Date();
+      start.setHours(h, m, 0, 0);
+      const diff = Math.floor((Date.now() - start.getTime()) / 1000);
+      if (diff < 0) { setElapsed('0:00'); return; }
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      setElapsed(`${mins}:${secs.toString().padStart(2, '0')}`);
+    }
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startTime]);
+
+  return html`<div class="timer">${elapsed}</div>`;
+}
+
+function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, dispatch }) {
+  const ex = EXERCISES[exerciseLog.exerciseId];
+  const rec = calculateNextWeight(exerciseLog.exerciseId, exerciseHistory);
+  const completedSets = exerciseLog.sets.filter(s => s.completed).length;
+  const totalSets = exerciseLog.sets.length;
+
+  let badgeClass = 'pending';
+  let badgeText = `0/${totalSets}`;
+  if (completedSets === totalSets) { badgeClass = 'complete'; badgeText = 'Done'; }
+  else if (completedSets > 0) { badgeClass = 'partial'; badgeText = `${completedSets}/${totalSets}`; }
+
+  return html`
+    <div class="exercise-card">
+      <div
+        class="exercise-header"
+        onClick=${() => dispatch({ type: 'SET_EXPANDED', index: expanded ? -1 : exerciseIndex })}
+      >
+        <div>
+          <div class="exercise-name">${ex?.name || exerciseLog.exerciseId}</div>
+          <div class="exercise-target">${totalSets}x${exerciseLog.targetReps}</div>
+        </div>
+        <span class="exercise-badge ${badgeClass}">${badgeText}</span>
+      </div>
+
+      ${expanded && html`
+        <div class="exercise-body fade-in">
+          ${rec && html`<div class="exercise-rec">${rec.message}</div>`}
+          ${exerciseLog.sets.map((set, si) => html`
+            <div class="set-row">
+              <div class="set-num">S${si + 1}</div>
+              <div class="set-inputs">
+                <${WeightStepper}
+                  value=${set.weight}
+                  onChange=${v => dispatch({ type: 'UPDATE_SET', exerciseIndex, setIndex: si, field: 'weight', value: v })}
+                />
+                <${RepStepper}
+                  value=${set.reps}
+                  onChange=${v => dispatch({ type: 'UPDATE_SET', exerciseIndex, setIndex: si, field: 'reps', value: v })}
+                />
+              </div>
+              <button
+                class="set-check ${set.completed ? (set.reps >= exerciseLog.targetReps ? 'done' : 'failed') : ''}"
+                onClick=${() => dispatch({ type: 'TOGGLE_SET_COMPLETE', exerciseIndex, setIndex: si })}
+              >
+                ${set.completed ? (set.reps >= exerciseLog.targetReps ? '\u2713' : '\u2717') : ''}
+              </button>
+            </div>
+          `)}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// --- History Screen ---
+function HistoryScreen({ state, dispatch }) {
+  if (state.detailView) {
+    return html`<${ExerciseDetailView} state=${state} dispatch=${dispatch} />`;
+  }
+
+  const sorted = [...state.sessions].reverse();
+
+  return html`
+    <div class="screen fade-in">
+      <div class="screen-title">History</div>
+
+      ${sorted.length === 0 && html`
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <div>No workouts yet. Start your first one!</div>
+        </div>
+      `}
+
+      ${sorted.map(session => html`
+        <div class="history-card" onClick=${() => dispatch({ type: 'VIEW_DETAIL', detail: { type: 'session', session } })}>
+          <div class="history-date">${formatDate(session.date)} · ${PROGRAMS[session.programId]?.name || 'Custom'}</div>
+          <div class="history-meta">
+            ${formatTime(session.startTime)}${session.endTime ? ` - ${formatTime(session.endTime)}` : ''}
+            ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
+          </div>
+          <div class="history-exercises">
+            ${session.exercises.map(se => {
+              const ex = EXERCISES[se.exerciseId];
+              const allDone = se.sets.every(s => s.completed && s.reps >= se.targetReps);
+              const maxWeight = Math.max(...se.sets.map(s => s.weight));
+              return html`
+                <span class="history-ex-tag ${allDone ? 'success' : 'fail'}">
+                  ${ex?.name || se.exerciseId} ${maxWeight}
+                </span>
+              `;
+            })}
+          </div>
+        </div>
+      `)}
+
+      ${Object.keys(state.exerciseHistory).length > 0 && html`
+        <div style="margin-top:20px">
+          <div class="input-label" style="margin-bottom:12px">Exercise Progress</div>
+          ${Object.entries(state.exerciseHistory).map(([exId, data]) => {
+            const ex = EXERCISES[exId];
+            return html`
+              <div
+                class="history-card"
+                onClick=${() => dispatch({ type: 'VIEW_DETAIL', detail: { type: 'exercise', exerciseId: exId } })}
+              >
+                <div class="history-date">${ex?.name || exId}</div>
+                <div class="history-meta">
+                  Last: ${data.lastWeight} lbs · ${data.history.length} sessions
+                  ${data.consecutiveFailures > 0 ? ` · ${data.consecutiveFailures} consecutive fail(s)` : ''}
+                </div>
+              </div>
+            `;
+          })}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function ExerciseDetailView({ state, dispatch }) {
+  const detail = state.detailView;
+
+  if (detail.type === 'session') {
+    const session = detail.session;
+    const planned = getPlannedMuscles(session.programId);
+    const completed = getCompletedMuscles(session.exercises);
+    return html`
+      <div class="screen fade-in">
+        <button class="back-btn" onClick=${() => dispatch({ type: 'BACK_FROM_DETAIL' })}>← Back</button>
+        <div class="screen-title">${formatDate(session.date)} · ${PROGRAMS[session.programId]?.name || 'Custom'}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+          ${formatTime(session.startTime)}${session.endTime ? ` - ${formatTime(session.endTime)}` : ''}
+          ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
+        </div>
+        <${MuscleMap} planned=${planned} completed=${completed} partial=${[]} />
+        ${session.exercises.map(se => {
+          const ex = EXERCISES[se.exerciseId];
+          return html`
+            <div class="card">
+              <div class="card-title">${ex?.name || se.exerciseId}</div>
+              ${se.sets.map((s, i) => html`
+                <div class="detail-row">
+                  <span>Set ${i + 1}</span>
+                  <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= se.targetReps ? '✓' : '✗') : '—'}</span>
+                </div>
+              `)}
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  if (detail.type === 'exercise') {
+    const exId = detail.exerciseId;
+    const ex = EXERCISES[exId];
+    const data = state.exerciseHistory[exId];
+    if (!data) return html`<div class="screen">No data</div>`;
+
+    const history = data.history.slice(0, 20).reverse();
+    const maxWeight = Math.max(...history.map(h => h.weight), 1);
+    const barWidth = Math.max(16, Math.floor(280 / history.length) - 4);
+
+    return html`
+      <div class="screen fade-in">
+        <button class="back-btn" onClick=${() => dispatch({ type: 'BACK_FROM_DETAIL' })}>← Back</button>
+        <div class="screen-title">${ex?.name || exId}</div>
+        <div class="card">
+          <div class="card-title">Progress</div>
+          <div class="card-subtitle">Current: ${data.lastWeight} lbs · ${data.history.length} sessions</div>
+          <div class="chart-container">
+            <svg viewBox="0 0 ${history.length * (barWidth + 4) + 20} 150">
+              ${history.map((h, i) => {
+                const barHeight = (h.weight / maxWeight) * 100;
+                const x = 10 + i * (barWidth + 4);
+                const y = 120 - barHeight;
+                return html`
+                  <rect x=${x} y=${y} width=${barWidth} height=${barHeight} class="chart-bar ${h.allCompleted ? '' : 'fail'}" />
+                  <text x=${x + barWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
+                  <text x=${x + barWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
+                `;
+              })}
+            </svg>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">History</div>
+          ${data.history.slice(0, 20).map(h => html`
+            <div class="detail-row">
+              <span>${formatDate(h.date)}</span>
+              <span style="color:${h.allCompleted ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                ${h.weight} lbs ${h.allCompleted ? '✓' : '✗'}
+              </span>
+            </div>
+          `)}
+        </div>
+      </div>
+    `;
+  }
+
+  return null;
+}
+
+// --- Muscle Map Full Screen ---
+function MusclesScreen({ state }) {
+  const lastSession = state.sessions[state.sessions.length - 1];
+  const nextProgram = determineNextProgram(state.lastProgramId);
+  const planned = getPlannedMuscles(nextProgram);
+
+  const lastCompleted = lastSession ? getCompletedMuscles(lastSession.exercises) : [];
+
+  return html`
+    <div class="screen fade-in">
+      <div class="screen-title">Muscle Map</div>
+
+      <div class="input-label" style="margin-bottom:8px">Next Workout: ${PROGRAMS[nextProgram]?.name}</div>
+      <${MuscleMap} planned=${planned} completed=${[]} partial=${[]} />
+
+      ${lastSession && html`
+        <div style="margin-top:16px">
+          <div class="input-label" style="margin-bottom:8px">Last Workout (${formatDate(lastSession.date)})</div>
+          <${MuscleMap} planned=${[]} completed=${lastCompleted} partial=${[]} />
+        </div>
+      `}
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Muscle Groups</div>
+        ${Object.entries(MUSCLE_GROUPS).map(([id, mg]) => {
+          const exercises = Object.values(EXERCISES).filter(
+            e => e.primaryMuscles.includes(id)
+          );
+          return html`
+            <div class="detail-row">
+              <span>${mg.label}</span>
+              <span style="font-size:12px;color:var(--text-secondary)">
+                ${exercises.map(e => e.name).join(', ')}
+              </span>
+            </div>
+          `;
+        })}
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 8: APP ROOT
+// ═══════════════════════════════════════════════════════════════
+
+function App() {
+  const [state, dispatch] = useReducer(appReducer, null, initState);
+
+  useEffect(() => {
+    saveState(state);
+  }, [state]);
+
+  const screenMap = {
+    start: html`<${StartScreen} state=${state} dispatch=${dispatch} />`,
+    workout: html`<${WorkoutScreen} state=${state} dispatch=${dispatch} />`,
+    history: html`<${HistoryScreen} state=${state} dispatch=${dispatch} />`,
+    muscles: html`<${MusclesScreen} state=${state} />`,
+  };
+
+  return html`
+    ${screenMap[state.screen] || screenMap.start}
+    <${NavBar} screen=${state.screen} dispatch=${dispatch} />
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 9: RENDER
+// ═══════════════════════════════════════════════════════════════
+
+render(html`<${App} />`, document.getElementById('app'));
+
+  </script>
+</body>
+</html>
