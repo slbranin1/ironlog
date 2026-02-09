@@ -23,22 +23,24 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg-primary: #0d0d12;
-      --bg-card: #1a1a2e;
-      --bg-input: #252540;
-      --bg-hover: #2e2e4a;
-      --text-primary: #e8e8f0;
-      --text-secondary: #8888a0;
-      --text-muted: #555570;
-      --accent-green: #00c853;
-      --accent-red: #ff1744;
-      --accent-amber: #ffab00;
-      --accent-blue: #2979ff;
-      --accent-purple: #7c4dff;
-      --border: #2a2a3e;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --font: -apple-system, 'SF Pro Display', system-ui, sans-serif;
+      --bg-primary: #000000;
+      --bg-card: #1c1c1e;
+      --bg-input: #2c2c2e;
+      --bg-hover: #3a3a3c;
+      --bg-elevated: #1c1c1e;
+      --text-primary: #f5f5f7;
+      --text-secondary: #98989f;
+      --text-muted: #636366;
+      --accent-green: #30d158;
+      --accent-red: #ff453a;
+      --accent-amber: #ffd60a;
+      --accent-blue: #0a84ff;
+      --accent-purple: #bf5af2;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.12);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --font: -apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -70,10 +72,10 @@
     }
 
     .screen-title {
-      font-size: 22px;
+      font-size: 34px;
       font-weight: 700;
-      margin-bottom: 16px;
-      letter-spacing: -0.3px;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -81,7 +83,9 @@
        ═══════════════════════════════════════════════════════════════ */
     .nav {
       display: flex;
-      background: var(--bg-card);
+      background: rgba(28,28,30,0.85);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
       border-top: 1px solid var(--border);
       padding-bottom: var(--safe-bottom);
       position: fixed;
@@ -97,26 +101,28 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 10px 0;
+      padding: 8px 0 6px;
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 500;
       font-family: var(--font);
       cursor: pointer;
       transition: color 0.2s;
       -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.01em;
     }
 
     .nav-item.active { color: var(--accent-blue); }
-    .nav-item svg { width: 24px; height: 24px; margin-bottom: 3px; }
+    .nav-item svg { width: 22px; height: 22px; margin-bottom: 2px; }
 
     /* ═══════════════════════════════════════════════════════════════
        CARDS
        ═══════════════════════════════════════════════════════════════ */
     .card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius);
       padding: 16px;
       margin-bottom: 12px;
@@ -160,20 +166,20 @@
 
     .input-field {
       width: 100%;
-      padding: 12px 14px;
+      padding: 12px 16px;
       background: var(--bg-input);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius-sm);
       color: var(--text-primary);
-      font-size: 16px;
+      font-size: 17px;
       font-family: var(--font);
       outline: none;
-      transition: border-color 0.2s;
+      transition: box-shadow 0.2s;
       -webkit-appearance: none;
     }
 
     .input-field:focus {
-      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(10,132,255,0.3);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -183,32 +189,34 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 14px 24px;
+      padding: 16px 24px;
       border: none;
-      border-radius: var(--radius-sm);
-      font-size: 16px;
+      border-radius: var(--radius);
+      font-size: 17px;
       font-weight: 600;
       font-family: var(--font);
       cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
       -webkit-tap-highlight-color: transparent;
       width: 100%;
+      letter-spacing: -0.2px;
     }
 
-    .btn:active { transform: scale(0.97); }
+    .btn:active { transform: scale(0.97); opacity: 0.85; }
     .btn-primary { background: var(--accent-blue); color: white; }
-    .btn-success { background: var(--accent-green); color: white; }
+    .btn-success { background: var(--accent-green); color: #000; font-weight: 700; }
     .btn-danger { background: var(--accent-red); color: white; }
     .btn-ghost {
-      background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--accent-blue);
+      border: none;
     }
 
     .btn-sm {
       padding: 8px 16px;
-      font-size: 14px;
+      font-size: 15px;
       width: auto;
+      border-radius: var(--radius-sm);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -228,22 +236,22 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08);
+      border: none;
       border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font-size: 14px;
+      color: var(--accent-blue);
+      font-size: 15px;
       font-weight: 600;
       font-family: var(--font);
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.1s;
       flex: 1;
       max-width: 56px;
     }
 
-    .stepper-btn:active { background: var(--bg-hover); }
+    .stepper-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.93); }
 
     .stepper-value {
       min-width: 56px;
@@ -264,8 +272,8 @@
        SET ROW
        ═══════════════════════════════════════════════════════════════ */
     .set-row {
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
     }
 
     .set-row:last-child { border-bottom: none; }
@@ -299,16 +307,16 @@
     .set-check {
       width: 48px;
       height: 48px;
-      border-radius: var(--radius-sm);
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--border);
-      background: var(--bg-input);
+      border: 2px solid rgba(255,255,255,0.12);
+      background: transparent;
       color: var(--text-muted);
       font-size: 20px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s ease;
       -webkit-tap-highlight-color: transparent;
       flex-shrink: 0;
     }
@@ -316,7 +324,8 @@
     .set-check.done {
       background: var(--accent-green);
       border-color: var(--accent-green);
-      color: white;
+      color: #000;
+      transform: scale(1.05);
     }
 
     .set-check.failed {
@@ -329,18 +338,19 @@
        PROGRAM SELECTOR
        ═══════════════════════════════════════════════════════════════ */
     .program-option {
-      padding: 14px;
-      background: var(--bg-input);
-      border: 2px solid var(--border);
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border: 2px solid transparent;
       border-radius: var(--radius);
       margin-bottom: 8px;
       cursor: pointer;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
 
     .program-option.selected {
       border-color: var(--accent-blue);
+      background: rgba(10,132,255,0.08);
     }
 
     .program-option .name {
@@ -360,9 +370,9 @@
        ═══════════════════════════════════════════════════════════════ */
     .exercise-card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       overflow: hidden;
     }
 
@@ -395,17 +405,17 @@
     }
 
     .exercise-badge.pending {
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
       color: var(--text-secondary);
     }
 
     .exercise-badge.partial {
-      background: rgba(255,171,0,0.15);
+      background: rgba(255,214,10,0.12);
       color: var(--accent-amber);
     }
 
     .exercise-badge.complete {
-      background: rgba(0,200,83,0.15);
+      background: rgba(48,209,88,0.12);
       color: var(--accent-green);
     }
 
@@ -414,11 +424,11 @@
     }
 
     .exercise-rec {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--accent-blue);
       margin-bottom: 10px;
-      padding: 6px 10px;
-      background: rgba(41,121,255,0.08);
+      padding: 8px 12px;
+      background: rgba(10,132,255,0.08);
       border-radius: var(--radius-sm);
     }
 
@@ -456,31 +466,31 @@
     }
 
     .muscle-region {
-      fill: #1e1e30;
-      stroke: #333350;
-      stroke-width: 1.5;
+      fill: #1c1c1e;
+      stroke: rgba(255,255,255,0.06);
+      stroke-width: 1;
       transition: fill 0.3s ease;
     }
 
     .muscle-region.planned {
-      fill: var(--accent-red);
-      fill-opacity: 0.6;
+      fill: var(--accent-blue);
+      fill-opacity: 0.4;
     }
 
     .muscle-region.completed {
       fill: var(--accent-green);
-      fill-opacity: 0.8;
+      fill-opacity: 0.7;
     }
 
     .muscle-region.partial {
       fill: var(--accent-amber);
-      fill-opacity: 0.7;
+      fill-opacity: 0.5;
     }
 
     .body-outline {
       fill: none;
-      stroke: #333350;
-      stroke-width: 2;
+      stroke: rgba(255,255,255,0.1);
+      stroke-width: 1.5;
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -512,12 +522,17 @@
        ═══════════════════════════════════════════════════════════════ */
     .history-card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius);
       padding: 14px 16px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+
+    .history-card:active {
+      background: var(--bg-hover);
     }
 
     .history-date {
@@ -546,12 +561,12 @@
     }
 
     .history-ex-tag.success {
-      background: rgba(0,200,83,0.12);
+      background: rgba(48,209,88,0.12);
       color: var(--accent-green);
     }
 
     .history-ex-tag.fail {
-      background: rgba(255,23,68,0.12);
+      background: rgba(255,69,58,0.12);
       color: var(--accent-red);
     }
 
@@ -569,12 +584,12 @@
 
     .chart-bar {
       fill: var(--accent-blue);
-      rx: 3;
+      rx: 4;
     }
 
     .chart-bar.fail {
       fill: var(--accent-red);
-      fill-opacity: 0.6;
+      fill-opacity: 0.5;
     }
 
     .chart-label {
@@ -598,10 +613,10 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       background: var(--bg-card);
       border-radius: var(--radius);
-      border: 1px solid var(--border);
+      border: none;
     }
 
     .session-header .info {
@@ -626,11 +641,12 @@
     .feeling-btn {
       flex: 1;
       padding: 10px;
-      border: 2px solid var(--border);
+      border: 2px solid transparent;
       border-radius: var(--radius-sm);
-      background: var(--bg-input);
+      background: rgba(255,255,255,0.06);
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: 500;
       font-family: var(--font);
       cursor: pointer;
       text-align: center;
@@ -641,7 +657,7 @@
     .feeling-btn.selected {
       border-color: var(--accent-blue);
       color: var(--text-primary);
-      background: rgba(41,121,255,0.1);
+      background: rgba(10,132,255,0.12);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -698,9 +714,9 @@
     .detail-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 15px;
     }
 
     .detail-row:last-child { border-bottom: none; }
@@ -709,7 +725,8 @@
       background: none;
       border: none;
       color: var(--accent-blue);
-      font-size: 14px;
+      font-size: 17px;
+      font-weight: 400;
       font-family: var(--font);
       cursor: pointer;
       padding: 4px 0;
@@ -755,11 +772,12 @@
       font-weight: 700;
       font-family: var(--font);
       background: var(--bg-input);
-      border: 2px solid var(--accent-blue);
+      border: none;
       border-radius: var(--radius-sm);
       color: var(--text-primary);
-      padding: 4px;
+      padding: 6px;
       outline: none;
+      box-shadow: 0 0 0 3px rgba(10,132,255,0.4);
       -webkit-appearance: none;
       -moz-appearance: textfield;
     }
@@ -791,16 +809,18 @@
     }
 
     .rest-timer-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+      background: rgba(28,28,30,0.92);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border: none;
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 16px 18px;
       pointer-events: all;
       animation: fadeIn 0.25s ease-out;
     }
 
     .rest-timer-card.done {
-      border-color: var(--accent-green);
+      background: rgba(48,209,88,0.12);
     }
 
     .rest-timer-label {
@@ -1445,7 +1465,7 @@ function MuscleMap({ planned = [], completed = [], partial = [], mini = false })
       />
     </div>
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:var(--accent-red)"></div> Planned</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent-blue)"></div> Planned</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--accent-amber)"></div> In Progress</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--accent-green)"></div> Completed</div>
     </div>
