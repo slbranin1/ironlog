@@ -744,6 +744,112 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       STEPPER INPUT (tap-to-type)
+       ═══════════════════════════════════════════════════════════════ */
+    .stepper-input {
+      width: 80px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--font);
+      background: var(--bg-input);
+      border: 2px solid var(--accent-blue);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 4px;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: textfield;
+    }
+    .stepper-input::-webkit-inner-spin-button,
+    .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PLATE CALCULATOR
+       ═══════════════════════════════════════════════════════════════ */
+    .plate-calc {
+      text-align: center;
+      font-size: 11px;
+      color: var(--accent-blue);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       REST TIMER
+       ═══════════════════════════════════════════════════════════════ */
+    .rest-timer-overlay {
+      position: fixed;
+      bottom: 72px;
+      left: 0;
+      right: 0;
+      padding: 0 16px calc(var(--safe-bottom) + 8px);
+      z-index: 99;
+      pointer-events: none;
+    }
+
+    .rest-timer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      pointer-events: all;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .rest-timer-card.done {
+      border-color: var(--accent-green);
+    }
+
+    .rest-timer-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .rest-timer-display {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 8px;
+    }
+
+    .rest-timer-bar {
+      height: 4px;
+      background: var(--bg-input);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .rest-timer-fill {
+      height: 100%;
+      background: var(--accent-blue);
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+
+    .rest-timer-card.done .rest-timer-fill {
+      background: var(--accent-green);
+    }
+
+    .rest-timer-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .rest-timer-actions .btn {
+      flex: 1;
+      min-width: auto;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -866,26 +972,125 @@ const EXERCISES = {
   },
 };
 
-const PROGRAMS = {
-  A: {
-    id: 'A', name: 'Workout A',
-    exercises: [
-      { exerciseId: 'squat',       sets: 3, reps: 5  },
-      { exerciseId: 'bench_press', sets: 3, reps: 5  },
-      { exerciseId: 'barbell_row', sets: 3, reps: 5  },
-      { exerciseId: 'face_pull',   sets: 3, reps: 15 },
-    ]
-  },
-  B: {
-    id: 'B', name: 'Workout B',
-    exercises: [
-      { exerciseId: 'squat',          sets: 3, reps: 5  },
-      { exerciseId: 'overhead_press', sets: 3, reps: 5  },
-      { exerciseId: 'deadlift',       sets: 1, reps: 5  },
-      { exerciseId: 'lat_pulldown',   sets: 3, reps: 10 },
-    ]
-  }
+// ── 5/3/1 "Less Boring But Big" ──────────────────────────────
+// Main lifts: squat, bench_press, deadlift, overhead_press
+// Supplemental BBB swap: squat↔deadlift, bench↔ohp
+
+const MAIN_LIFTS = ['squat', 'bench_press', 'deadlift', 'overhead_press'];
+
+const BBB_SWAP = {
+  squat: 'deadlift',
+  deadlift: 'squat',
+  bench_press: 'overhead_press',
+  overhead_press: 'bench_press',
 };
+
+// Week schemes: [percent of TM, target reps]
+const WEEK_SCHEMES = {
+  1: { name: '5s Week',   main: [[0.65, 5], [0.75, 5], [0.85, 5]],   bbb: 0.50 },
+  2: { name: '3s Week',   main: [[0.70, 3], [0.80, 3], [0.90, 3]],   bbb: 0.50 },
+  3: { name: '5/3/1 Week', main: [[0.75, 5], [0.85, 3], [0.95, 1]],  bbb: 0.50 },
+  4: { name: 'Deload',     main: [[0.40, 5], [0.50, 5], [0.60, 5]],  bbb: 0.40 },
+};
+
+// Accessories per day (push/pull/single-leg or core)
+const DAY_ACCESSORIES = {
+  squat:          [{ exerciseId: 'leg_press', sets: 3, reps: 10 }, { exerciseId: 'barbell_curl', sets: 3, reps: 10 }, { exerciseId: 'face_pull', sets: 3, reps: 15 }],
+  bench_press:    [{ exerciseId: 'dip', sets: 3, reps: 8 }, { exerciseId: 'barbell_row', sets: 3, reps: 10 }, { exerciseId: 'face_pull', sets: 3, reps: 15 }],
+  deadlift:       [{ exerciseId: 'romanian_deadlift', sets: 3, reps: 8 }, { exerciseId: 'chin_up', sets: 3, reps: 8 }, { exerciseId: 'calf_raise', sets: 3, reps: 15 }],
+  overhead_press: [{ exerciseId: 'tricep_pushdown', sets: 3, reps: 12 }, { exerciseId: 'lat_pulldown', sets: 3, reps: 10 }, { exerciseId: 'barbell_curl', sets: 3, reps: 10 }],
+};
+
+// 5/3/1 programs — one per main lift day
+const PROGRAMS = {};
+MAIN_LIFTS.forEach(lift => {
+  const ex = EXERCISES[lift];
+  PROGRAMS[lift] = {
+    id: lift,
+    name: `${ex.name} Day`,
+    mainLift: lift,
+    bbbLift: BBB_SWAP[lift],
+    accessories: DAY_ACCESSORIES[lift],
+  };
+});
+
+// Plate calculator: available plates per side (lbs), bar = 45
+const BAR_WEIGHT = 45;
+const PLATES = [45, 25, 10, 5, 2.5];
+
+function calculatePlates(totalWeight) {
+  if (totalWeight <= BAR_WEIGHT) return [];
+  let remaining = (totalWeight - BAR_WEIGHT) / 2;
+  const result = [];
+  for (const plate of PLATES) {
+    while (remaining >= plate) {
+      result.push(plate);
+      remaining -= plate;
+    }
+  }
+  return result;
+}
+
+function roundTo5(weight) {
+  return Math.round(weight / 5) * 5;
+}
+
+// Build the sets for a 5/3/1 workout day
+function build531Exercises(mainLiftId, cycleWeek, trainingMaxes) {
+  const week = WEEK_SCHEMES[cycleWeek] || WEEK_SCHEMES[1];
+  const tm = trainingMaxes[mainLiftId] || 0;
+  const bbbLift = BBB_SWAP[mainLiftId];
+  const bbbTm = trainingMaxes[bbbLift] || 0;
+  const program = PROGRAMS[mainLiftId];
+
+  const exercises = [];
+
+  // Main lift: 3 working sets
+  exercises.push({
+    exerciseId: mainLiftId,
+    category: 'main',
+    label: '5/3/1',
+    sets: week.main.map(([pct, reps]) => ({
+      weight: roundTo5(tm * pct),
+      reps,
+      targetReps: reps,
+      completed: false,
+      pct,
+    })),
+  });
+
+  // BBB supplemental: 5x10 at BBB percentage
+  const bbbWeight = roundTo5(bbbTm * week.bbb);
+  exercises.push({
+    exerciseId: bbbLift,
+    category: 'supplemental',
+    label: 'BBB 5×10',
+    sets: Array.from({ length: 5 }, () => ({
+      weight: bbbWeight,
+      reps: 10,
+      targetReps: 10,
+      completed: false,
+      pct: week.bbb,
+    })),
+  });
+
+  // Accessories
+  program.accessories.forEach(acc => {
+    exercises.push({
+      exerciseId: acc.exerciseId,
+      category: 'accessory',
+      label: 'Accessory',
+      sets: Array.from({ length: acc.sets }, () => ({
+        weight: 0,
+        reps: acc.reps,
+        targetReps: acc.reps,
+        completed: false,
+      })),
+    });
+  });
+
+  return exercises;
+}
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 const DELOAD_PERCENT = 0.10;
@@ -894,14 +1099,22 @@ const DELOAD_PERCENT = 0.10;
 // SECTION 3: STORAGE
 // ═══════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = 'ironlog_v1';
-const CURRENT_VERSION = 1;
+const STORAGE_KEY = 'ironlog_v2';
+const CURRENT_VERSION = 2;
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    // Try v2 first, fall back to v1
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      raw = localStorage.getItem('ironlog_v1');
+      if (!raw) return null;
+    }
     const parsed = JSON.parse(raw);
+    // Migrate v1 → v2: add new fields
+    if (!parsed.trainingMaxes) parsed.trainingMaxes = {};
+    if (!parsed.cycleWeek) parsed.cycleWeek = 1;
+    if (!parsed.cycleNumber) parsed.cycleNumber = 1;
     return parsed;
   } catch {
     return null;
@@ -909,7 +1122,7 @@ function loadState() {
 }
 
 function saveState(state) {
-  const { screen, expandedExercise, detailView, ...persistable } = state;
+  const { screen, expandedExercise, detailView, restTimer, ...persistable } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...persistable,
     version: CURRENT_VERSION,
@@ -945,24 +1158,7 @@ function calculateNextWeight(exerciseId, exerciseHistory) {
   return { weight: nextWeight, reason: 'progress', message: `+${increment} lbs from last session` };
 }
 
-function determineNextProgram(lastProgramId) {
-  if (!lastProgramId) return 'A';
-  return lastProgramId === 'A' ? 'B' : 'A';
-}
-
-function getPlannedMuscles(programId) {
-  const program = PROGRAMS[programId];
-  if (!program) return [];
-  const muscles = new Set();
-  program.exercises.forEach(pe => {
-    const ex = EXERCISES[pe.exerciseId];
-    if (ex) {
-      ex.primaryMuscles.forEach(m => muscles.add(m));
-      ex.secondaryMuscles.forEach(m => muscles.add(m));
-    }
-  });
-  return [...muscles];
-}
+// getPlannedMuscles is defined below with the StartScreen
 
 function getCompletedMuscles(sessionExercises) {
   const muscles = new Set();
@@ -1269,6 +1465,12 @@ const defaultState = {
   lastProgramId: null,
   expandedExercise: 0,
   detailView: null,
+  // 5/3/1 fields
+  trainingMaxes: {},   // { squat: 200, bench_press: 150, ... }
+  cycleWeek: 1,        // 1-4
+  cycleNumber: 1,      // increments after week 4
+  // Rest timer
+  restTimer: null,     // { seconds, remaining, active }
 };
 
 function initState() {
@@ -1282,38 +1484,34 @@ function initState() {
     lastProgramId: saved.lastProgramId || null,
     activeSession: saved.activeSession || null,
     screen: saved.activeSession ? 'workout' : 'start',
+    trainingMaxes: saved.trainingMaxes || {},
+    cycleWeek: saved.cycleWeek || 1,
+    cycleNumber: saved.cycleNumber || 1,
   };
 }
 
 function appReducer(state, action) {
   switch (action.type) {
     case 'START_SESSION': {
-      const { startTime, lockerNumber, programId } = action;
-      const program = PROGRAMS[programId];
-      const exercises = program.exercises.map(pe => ({
-        exerciseId: pe.exerciseId,
-        targetSets: pe.sets,
-        targetReps: pe.reps,
-        sets: Array.from({ length: pe.sets }, () => {
-          const rec = calculateNextWeight(pe.exerciseId, state.exerciseHistory);
-          return {
-            weight: rec ? rec.weight : 0,
-            reps: pe.reps,
-            completed: false,
-          };
-        }),
-      }));
+      const { startTime, lockerNumber, programId, cardio } = action;
+      const exercises = build531Exercises(programId, state.cycleWeek, state.trainingMaxes);
       return {
         ...state,
         screen: 'workout',
         expandedExercise: 0,
+        restTimer: null,
         activeSession: {
           id: 'session_' + Date.now(),
           date: todayStr(),
           startTime,
+          startTimestamp: Date.now(),
           endTime: null,
+          duration: null,
           lockerNumber,
           programId,
+          cycleWeek: state.cycleWeek,
+          cycleNumber: state.cycleNumber,
+          cardio: cardio || null,
           exercises,
         },
         settings: { ...state.settings, lastLockerNumber: lockerNumber },
@@ -1345,20 +1543,49 @@ function appReducer(state, action) {
         });
         return { ...e, sets };
       });
-      return { ...state, activeSession: { ...session, exercises } };
+      // Auto-start rest timer when set completed
+      const wasCompleted = session.exercises[exerciseIndex].sets[setIndex].completed;
+      const nowCompleted = !wasCompleted;
+      const ex = EXERCISES[session.exercises[exerciseIndex].exerciseId];
+      const isCompound = ex && ex.category === 'compound';
+      const defaultRest = isCompound ? 180 : 90; // 3min compounds, 1.5min accessories
+      return {
+        ...state,
+        activeSession: { ...session, exercises },
+        restTimer: nowCompleted ? { seconds: defaultRest, remaining: defaultRest, active: true } : state.restTimer,
+      };
     }
 
     case 'SET_EXPANDED': {
       return { ...state, expandedExercise: action.index };
     }
 
+    case 'REST_TIMER_TICK': {
+      if (!state.restTimer || !state.restTimer.active) return state;
+      const remaining = state.restTimer.remaining - 1;
+      if (remaining <= 0) return { ...state, restTimer: { ...state.restTimer, remaining: 0, active: false } };
+      return { ...state, restTimer: { ...state.restTimer, remaining } };
+    }
+
+    case 'REST_TIMER_SET': {
+      return { ...state, restTimer: { seconds: action.seconds, remaining: action.seconds, active: true } };
+    }
+
+    case 'REST_TIMER_DISMISS': {
+      return { ...state, restTimer: null };
+    }
+
     case 'END_SESSION': {
-      const session = { ...state.activeSession, endTime: nowTimeStr() };
+      const endTimestamp = Date.now();
+      const duration = state.activeSession.startTimestamp
+        ? Math.floor((endTimestamp - state.activeSession.startTimestamp) / 1000)
+        : null;
+      const session = { ...state.activeSession, endTime: nowTimeStr(), duration };
       const newHistory = { ...state.exerciseHistory };
 
       session.exercises.forEach(se => {
         const maxWeight = Math.max(...se.sets.map(s => s.weight));
-        const allCompleted = se.sets.every(s => s.completed && s.reps >= se.targetReps);
+        const allCompleted = se.sets.every(s => s.completed && s.reps >= (s.targetReps || 0));
         newHistory[se.exerciseId] = updateExerciseHistory(
           newHistory, se.exerciseId, maxWeight, allCompleted, session.date
         );
@@ -1368,10 +1595,38 @@ function appReducer(state, action) {
         ...state,
         screen: 'start',
         activeSession: null,
+        restTimer: null,
         sessions: [...state.sessions, session],
         exerciseHistory: newHistory,
         lastProgramId: session.programId,
       };
+    }
+
+    case 'SET_TRAINING_MAX': {
+      return {
+        ...state,
+        trainingMaxes: { ...state.trainingMaxes, [action.exerciseId]: action.weight },
+      };
+    }
+
+    case 'ADVANCE_CYCLE': {
+      const nextWeek = state.cycleWeek >= 4 ? 1 : state.cycleWeek + 1;
+      const nextCycle = state.cycleWeek >= 4 ? state.cycleNumber + 1 : state.cycleNumber;
+      // Auto-increase TMs after full cycle (week 4 → week 1)
+      let newTMs = { ...state.trainingMaxes };
+      if (state.cycleWeek >= 4) {
+        MAIN_LIFTS.forEach(lift => {
+          if (newTMs[lift]) {
+            const inc = (lift === 'squat' || lift === 'deadlift') ? 10 : 5;
+            newTMs[lift] = newTMs[lift] + inc;
+          }
+        });
+      }
+      return { ...state, cycleWeek: nextWeek, cycleNumber: nextCycle, trainingMaxes: newTMs };
+    }
+
+    case 'SET_CYCLE_WEEK': {
+      return { ...state, cycleWeek: action.week };
     }
 
     case 'NAVIGATE': {
@@ -1395,15 +1650,54 @@ function appReducer(state, action) {
 // SECTION 7: COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 
-// --- Stepper (for weight) ---
-function WeightStepper({ value, onChange }) {
+// --- Stepper (for weight) with tap-to-type ---
+function WeightStepper({ value, onChange, showPlates }) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState('');
+  const inputRef = useRef(null);
+
+  const startEdit = () => {
+    setEditVal(String(value));
+    setEditing(true);
+  };
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const commitEdit = () => {
+    const num = parseFloat(editVal);
+    if (!isNaN(num) && num >= 0) onChange(num);
+    setEditing(false);
+  };
+
+  const plates = showPlates ? calculatePlates(value) : [];
+
   return html`
-    <div class="stepper">
-      <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 5))}>-5</button>
-      <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 2.5))}>-2.5</button>
-      <div class="stepper-value">${value}<span class="stepper-unit"> lbs</span></div>
-      <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
-      <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
+    <div>
+      <div class="stepper">
+        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 5))}>-5</button>
+        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 2.5))}>-2.5</button>
+        ${editing ? html`
+          <input
+            ref=${inputRef}
+            class="stepper-input"
+            type="number"
+            inputmode="decimal"
+            value=${editVal}
+            onInput=${e => setEditVal(e.target.value)}
+            onBlur=${commitEdit}
+            onKeyDown=${e => e.key === 'Enter' && commitEdit()}
+          />
+        ` : html`
+          <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value}<span class="stepper-unit"> lbs</span></div>
+        `}
+        <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
+        <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
+      </div>
+      ${showPlates && plates.length > 0 && html`
+        <div class="plate-calc">Each side: ${plates.map(p => p % 1 === 0 ? p : p.toFixed(1)).join(' + ')}</div>
+      `}
     </div>
   `;
 }
@@ -1419,12 +1713,49 @@ function RepStepper({ value, onChange }) {
   `;
 }
 
+// --- Rest Timer ---
+function RestTimer({ restTimer, dispatch }) {
+  useEffect(() => {
+    if (!restTimer || !restTimer.active) return;
+    const id = setInterval(() => dispatch({ type: 'REST_TIMER_TICK' }), 1000);
+    return () => clearInterval(id);
+  }, [restTimer?.active]);
+
+  if (!restTimer) return null;
+
+  const mins = Math.floor(restTimer.remaining / 60);
+  const secs = restTimer.remaining % 60;
+  const pct = restTimer.seconds > 0 ? ((restTimer.seconds - restTimer.remaining) / restTimer.seconds) * 100 : 100;
+  const done = restTimer.remaining <= 0;
+
+  return html`
+    <div class="rest-timer-overlay">
+      <div class="rest-timer-card ${done ? 'done' : ''}">
+        <div class="rest-timer-label">${done ? 'Rest Complete!' : 'Rest Timer'}</div>
+        <div class="rest-timer-display">${mins}:${secs.toString().padStart(2, '0')}</div>
+        <div class="rest-timer-bar">
+          <div class="rest-timer-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="rest-timer-actions">
+          <button class="btn btn-sm btn-ghost" onClick=${() => dispatch({ type: 'REST_TIMER_DISMISS' })}>Skip</button>
+          ${[30, 60, 120, 180].map(s => html`
+            <button class="btn btn-sm btn-ghost" onClick=${() => dispatch({ type: 'REST_TIMER_SET', seconds: s })}>
+              ${s >= 60 ? `${s/60}m` : `${s}s`}
+            </button>
+          `)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // --- Nav Bar ---
 function NavBar({ screen, dispatch }) {
   const items = [
     { id: 'start', label: 'Workout', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h11M4 12h16M6.5 17.5h11"/><circle cx="4" cy="6.5" r="2"/><circle cx="20" cy="6.5" r="2"/><circle cx="4" cy="17.5" r="2"/><circle cx="20" cy="17.5" r="2"/></svg>` },
     { id: 'muscles', label: 'Muscles', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z"/><path d="M8 14v2a4 4 0 008 0v-2"/><path d="M12 18v4"/></svg>` },
     { id: 'history', label: 'History', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+    { id: 'settings', label: 'Settings', icon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>` },
   ];
 
   return html`
@@ -1444,17 +1775,52 @@ function NavBar({ screen, dispatch }) {
 
 // --- Start Session Screen ---
 function StartScreen({ state, dispatch }) {
-  const nextProgram = determineNextProgram(state.lastProgramId);
-  const [selectedProgram, setSelectedProgram] = useState(nextProgram);
+  const dayOrder = ['squat', 'bench_press', 'deadlift', 'overhead_press'];
+  const lastIdx = state.lastProgramId ? dayOrder.indexOf(state.lastProgramId) : -1;
+  const nextDay = dayOrder[(lastIdx + 1) % 4];
+  const [selectedDay, setSelectedDay] = useState(nextDay);
   const [startTime, setStartTime] = useState(nowTimeStr());
   const [locker, setLocker] = useState(state.settings.lastLockerNumber);
   const [feeling, setFeeling] = useState(null);
+  // Cardio warmup
+  const [showCardio, setShowCardio] = useState(false);
+  const [cardioType, setCardioType] = useState('Treadmill');
+  const [cardioTime, setCardioTime] = useState('');
+  const [cardioDist, setCardioDist] = useState('');
 
-  const plannedMuscles = getPlannedMuscles(selectedProgram);
+  const hasTMs = MAIN_LIFTS.every(l => state.trainingMaxes[l] > 0);
+  const week = WEEK_SCHEMES[state.cycleWeek];
+  const tm = state.trainingMaxes[selectedDay] || 0;
+
+  const plannedMuscles = getPlannedMuscles(selectedDay);
+
+  const cardioPace = cardioTime && cardioDist && parseFloat(cardioDist) > 0
+    ? (parseFloat(cardioTime) / parseFloat(cardioDist)).toFixed(1) + ' min/mi'
+    : null;
+
+  const cardioData = showCardio && cardioTime ? {
+    type: cardioType,
+    time: parseFloat(cardioTime) || 0,
+    distance: parseFloat(cardioDist) || 0,
+    pace: cardioPace,
+  } : null;
 
   return html`
     <div class="screen fade-in">
       <div class="screen-title">IronLog</div>
+
+      ${!hasTMs && html`
+        <div class="card" style="border-color:var(--accent-amber);margin-bottom:16px">
+          <div style="font-size:14px;color:var(--accent-amber);font-weight:600;margin-bottom:4px">Set Training Maxes</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Go to Settings to enter your Training Maxes before starting a 5/3/1 workout.</div>
+        </div>
+      `}
+
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">
+          Cycle ${state.cycleNumber} · ${week?.name || 'Week ' + state.cycleWeek}
+        </div>
+      </div>
 
       <div class="input-group">
         <label class="input-label">How are you feeling?</label>
@@ -1471,43 +1837,63 @@ function StartScreen({ state, dispatch }) {
       <div style="display:flex;gap:12px">
         <div class="input-group" style="flex:1">
           <label class="input-label">Start Time</label>
-          <input
-            type="time"
-            class="input-field"
-            value=${startTime}
-            onInput=${e => setStartTime(e.target.value)}
-          />
+          <input type="time" class="input-field" value=${startTime} onInput=${e => setStartTime(e.target.value)} />
         </div>
         <div class="input-group" style="flex:1">
           <label class="input-label">Locker #</label>
-          <input
-            type="number"
-            class="input-field"
-            value=${locker}
-            onInput=${e => setLocker(e.target.value)}
-            placeholder="—"
-            inputmode="numeric"
-          />
+          <input type="number" class="input-field" value=${locker} onInput=${e => setLocker(e.target.value)} placeholder="—" inputmode="numeric" />
         </div>
       </div>
 
+      <!-- Cardio Warmup -->
       <div class="input-group">
-        <label class="input-label">Workout</label>
-        ${Object.entries(PROGRAMS).map(([id, prog]) => html`
-          <div
-            class="program-option ${selectedProgram === id ? 'selected' : ''}"
-            onClick=${() => setSelectedProgram(id)}
-          >
-            <div class="name">${prog.name}${id === nextProgram ? ' (Next)' : ''}</div>
-            <div class="exercises">
-              ${prog.exercises.map(pe => {
-                const ex = EXERCISES[pe.exerciseId];
-                const rec = calculateNextWeight(pe.exerciseId, state.exerciseHistory);
-                return html`<div>${ex.name} ${pe.sets}x${pe.reps}${rec ? ` @ ${rec.weight} lbs` : ''}</div>`;
-              })}
+        <button class="btn btn-sm btn-ghost" style="margin-bottom:8px" onClick=${() => setShowCardio(!showCardio)}>
+          ${showCardio ? '- Hide Cardio Warmup' : '+ Cardio Warmup'}
+        </button>
+        ${showCardio && html`
+          <div class="card fade-in">
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              ${['Treadmill', 'Bike', 'Elliptical', 'Row'].map(t => html`
+                <button class="feeling-btn ${cardioType === t ? 'selected' : ''}" style="font-size:12px;padding:6px" onClick=${() => setCardioType(t)}>${t}</button>
+              `)}
             </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1">
+                <label class="input-label">Time (min)</label>
+                <input type="number" class="input-field" value=${cardioTime} onInput=${e => setCardioTime(e.target.value)} inputmode="decimal" placeholder="10" />
+              </div>
+              <div style="flex:1">
+                <label class="input-label">Distance (mi)</label>
+                <input type="number" class="input-field" value=${cardioDist} onInput=${e => setCardioDist(e.target.value)} inputmode="decimal" placeholder="1.0" />
+              </div>
+            </div>
+            ${cardioPace && html`<div style="font-size:12px;color:var(--accent-blue);margin-top:6px">Pace: ${cardioPace}</div>`}
           </div>
-        `)}
+        `}
+      </div>
+
+      <!-- 5/3/1 Day Selection -->
+      <div class="input-group">
+        <label class="input-label">Workout Day</label>
+        ${dayOrder.map(dayId => {
+          const prog = PROGRAMS[dayId];
+          const dayTm = state.trainingMaxes[dayId] || 0;
+          const bbbLift = BBB_SWAP[dayId];
+          const isNext = dayId === nextDay;
+          return html`
+            <div
+              class="program-option ${selectedDay === dayId ? 'selected' : ''}"
+              onClick=${() => setSelectedDay(dayId)}
+            >
+              <div class="name">${prog.name}${isNext ? ' (Next)' : ''}</div>
+              <div class="exercises">
+                <div>5/3/1: ${EXERCISES[dayId].name}${dayTm ? ` (TM: ${dayTm})` : ''}</div>
+                <div>BBB: ${EXERCISES[bbbLift].name} 5×10</div>
+                <div style="color:var(--text-muted)">${prog.accessories.map(a => EXERCISES[a.exerciseId].name).join(', ')}</div>
+              </div>
+            </div>
+          `;
+        })}
       </div>
 
       <${MuscleMap} planned=${plannedMuscles} completed=${[]} partial=${[]} mini=${true} />
@@ -1515,17 +1901,35 @@ function StartScreen({ state, dispatch }) {
       <button
         class="btn btn-success"
         style="margin-top:8px;font-size:18px;padding:16px"
+        disabled=${!hasTMs}
         onClick=${() => dispatch({
           type: 'START_SESSION',
           startTime,
           lockerNumber: locker,
-          programId: selectedProgram,
+          programId: selectedDay,
+          cardio: cardioData,
         })}
       >
         Start Workout
       </button>
     </div>
   `;
+}
+
+// Helper: get muscles for a 5/3/1 day
+function getPlannedMuscles(dayId) {
+  const prog = PROGRAMS[dayId];
+  if (!prog) return [];
+  const muscles = new Set();
+  const allExIds = [prog.mainLift, prog.bbbLift, ...prog.accessories.map(a => a.exerciseId)];
+  allExIds.forEach(exId => {
+    const ex = EXERCISES[exId];
+    if (ex) {
+      ex.primaryMuscles.forEach(m => muscles.add(m));
+      ex.secondaryMuscles.forEach(m => muscles.add(m));
+    }
+  });
+  return [...muscles];
 }
 
 // --- Active Workout Screen ---
@@ -1537,22 +1941,33 @@ function WorkoutScreen({ state, dispatch }) {
   const completed = getCompletedMuscles(session.exercises);
   const partial = getPartialMuscles(session.exercises);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const week = WEEK_SCHEMES[session.cycleWeek];
 
   return html`
     <div class="screen fade-in">
       <div class="session-header">
         <div>
           <div class="info">${PROGRAMS[session.programId]?.name || 'Workout'}</div>
-          <div class="meta">${formatTime(session.startTime)}${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}</div>
+          <div class="meta">
+            ${week?.name || ''} · ${formatTime(session.startTime)}
+            ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
+          </div>
         </div>
         <${ElapsedTimer} startTime=${session.startTime} />
       </div>
+
+      ${session.cardio && html`
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;font-weight:600;margin-bottom:4px">Cardio Warmup</div>
+          <div style="font-size:14px">${session.cardio.type}: ${session.cardio.time}min${session.cardio.distance ? ` · ${session.cardio.distance}mi` : ''}${session.cardio.pace ? ` · ${session.cardio.pace}` : ''}</div>
+        </div>
+      `}
 
       <${MuscleMap} planned=${planned} completed=${completed} partial=${partial} mini=${true} />
 
       ${session.exercises.map((se, ei) => html`
         <${ExerciseCard}
-          key=${se.exerciseId}
+          key=${se.exerciseId + '_' + ei}
           exerciseLog=${se}
           exerciseIndex=${ei}
           expanded=${state.expandedExercise === ei}
@@ -1561,12 +1976,14 @@ function WorkoutScreen({ state, dispatch }) {
         />
       `)}
 
+      <${RestTimer} restTimer=${state.restTimer} dispatch=${dispatch} />
+
       <div style="margin-top:16px">
         ${showEndConfirm ? html`
           <div class="card">
-            <p style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">End this workout?</p>
+            <p style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">End this workout and advance to next week?</p>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-danger" style="flex:1" onClick=${() => dispatch({ type: 'END_SESSION' })}>End Workout</button>
+              <button class="btn btn-danger" style="flex:1" onClick=${() => { dispatch({ type: 'END_SESSION' }); dispatch({ type: 'ADVANCE_CYCLE' }); }}>End & Advance</button>
               <button class="btn btn-ghost" style="flex:1" onClick=${() => setShowEndConfirm(false)}>Cancel</button>
             </div>
           </div>
@@ -1602,14 +2019,18 @@ function ElapsedTimer({ startTime }) {
 
 function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, dispatch }) {
   const ex = EXERCISES[exerciseLog.exerciseId];
-  const rec = calculateNextWeight(exerciseLog.exerciseId, exerciseHistory);
   const completedSets = exerciseLog.sets.filter(s => s.completed).length;
   const totalSets = exerciseLog.sets.length;
+  const isBarbell = ex && (ex.category === 'compound');
 
   let badgeClass = 'pending';
   let badgeText = `0/${totalSets}`;
   if (completedSets === totalSets) { badgeClass = 'complete'; badgeText = 'Done'; }
   else if (completedSets > 0) { badgeClass = 'partial'; badgeText = `${completedSets}/${totalSets}`; }
+
+  const categoryColor = exerciseLog.category === 'main' ? 'var(--accent-blue)'
+    : exerciseLog.category === 'supplemental' ? 'var(--accent-purple)'
+    : 'var(--text-muted)';
 
   return html`
     <div class="exercise-card">
@@ -1619,23 +2040,30 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
       >
         <div>
           <div class="exercise-name">${ex?.name || exerciseLog.exerciseId}</div>
-          <div class="exercise-target">${totalSets}x${exerciseLog.targetReps}</div>
+          <div class="exercise-target">
+            <span style="color:${categoryColor};font-weight:600">${exerciseLog.label || ''}</span>
+            ${exerciseLog.label ? ' · ' : ''}${totalSets} sets
+          </div>
         </div>
         <span class="exercise-badge ${badgeClass}">${badgeText}</span>
       </div>
 
       ${expanded && html`
         <div class="exercise-body fade-in">
-          ${rec && html`<div class="exercise-rec">${rec.message}</div>`}
           ${exerciseLog.sets.map((set, si) => html`
             <div class="set-row">
               <div class="set-row-header">
-                <div class="set-num">Set ${si + 1}</div>
+                <div class="set-num">
+                  Set ${si + 1}
+                  ${set.pct ? html` <span style="color:var(--text-muted);font-weight:400">@ ${Math.round(set.pct * 100)}%</span>` : ''}
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">${set.targetReps}+ reps</div>
               </div>
               <div class="set-weight-row">
                 <${WeightStepper}
                   value=${set.weight}
                   onChange=${v => dispatch({ type: 'UPDATE_SET', exerciseIndex, setIndex: si, field: 'weight', value: v })}
+                  showPlates=${isBarbell && set.weight >= BAR_WEIGHT}
                 />
               </div>
               <div class="set-bottom-row">
@@ -1647,10 +2075,10 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
                   />
                 </div>
                 <button
-                  class="set-check ${set.completed ? (set.reps >= exerciseLog.targetReps ? 'done' : 'failed') : ''}"
+                  class="set-check ${set.completed ? (set.reps >= set.targetReps ? 'done' : 'failed') : ''}"
                   onClick=${() => dispatch({ type: 'TOGGLE_SET_COMPLETE', exerciseIndex, setIndex: si })}
                 >
-                  ${set.completed ? (set.reps >= exerciseLog.targetReps ? '\u2713' : '\u2717') : ''}
+                  ${set.completed ? (set.reps >= set.targetReps ? '\u2713' : '\u2717') : ''}
                 </button>
               </div>
             </div>
@@ -1685,12 +2113,14 @@ function HistoryScreen({ state, dispatch }) {
           <div class="history-date">${formatDate(session.date)} · ${PROGRAMS[session.programId]?.name || 'Custom'}</div>
           <div class="history-meta">
             ${formatTime(session.startTime)}${session.endTime ? ` - ${formatTime(session.endTime)}` : ''}
+            ${session.duration ? ` · ${Math.floor(session.duration / 60)}min` : ''}
             ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
+            ${session.cycleWeek ? ` · W${session.cycleWeek}` : ''}
           </div>
           <div class="history-exercises">
             ${session.exercises.map(se => {
               const ex = EXERCISES[se.exerciseId];
-              const allDone = se.sets.every(s => s.completed && s.reps >= se.targetReps);
+              const allDone = se.sets.every(s => s.completed && s.reps >= (s.targetReps || 0));
               const maxWeight = Math.max(...se.sets.map(s => s.weight));
               return html`
                 <span class="history-ex-tag ${allDone ? 'success' : 'fail'}">
@@ -1739,6 +2169,7 @@ function ExerciseDetailView({ state, dispatch }) {
         <div class="screen-title">${formatDate(session.date)} · ${PROGRAMS[session.programId]?.name || 'Custom'}</div>
         <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
           ${formatTime(session.startTime)}${session.endTime ? ` - ${formatTime(session.endTime)}` : ''}
+          ${session.duration ? ` · ${Math.floor(session.duration / 60)}min` : ''}
           ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
         </div>
         <${MuscleMap} planned=${planned} completed=${completed} partial=${[]} />
@@ -1750,7 +2181,7 @@ function ExerciseDetailView({ state, dispatch }) {
               ${se.sets.map((s, i) => html`
                 <div class="detail-row">
                   <span>Set ${i + 1}</span>
-                  <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= se.targetReps ? '✓' : '✗') : '—'}</span>
+                  <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
                 </div>
               `)}
             </div>
@@ -1813,8 +2244,10 @@ function ExerciseDetailView({ state, dispatch }) {
 // --- Muscle Map Full Screen ---
 function MusclesScreen({ state }) {
   const lastSession = state.sessions[state.sessions.length - 1];
-  const nextProgram = determineNextProgram(state.lastProgramId);
-  const planned = getPlannedMuscles(nextProgram);
+  const dayOrder = ['squat', 'bench_press', 'deadlift', 'overhead_press'];
+  const lastIdx = state.lastProgramId ? dayOrder.indexOf(state.lastProgramId) : -1;
+  const nextDay = dayOrder[(lastIdx + 1) % 4];
+  const planned = getPlannedMuscles(nextDay);
 
   const lastCompleted = lastSession ? getCompletedMuscles(lastSession.exercises) : [];
 
@@ -1822,7 +2255,7 @@ function MusclesScreen({ state }) {
     <div class="screen fade-in">
       <div class="screen-title">Muscle Map</div>
 
-      <div class="input-label" style="margin-bottom:8px">Next Workout: ${PROGRAMS[nextProgram]?.name}</div>
+      <div class="input-label" style="margin-bottom:8px">Next Workout: ${PROGRAMS[nextDay]?.name}</div>
       <${MuscleMap} planned=${planned} completed=${[]} partial=${[]} />
 
       ${lastSession && html`
@@ -1852,6 +2285,118 @@ function MusclesScreen({ state }) {
   `;
 }
 
+// --- Settings Screen ---
+function SettingsScreen({ state, dispatch }) {
+  const [tmInputs, setTmInputs] = useState(() => {
+    const inputs = {};
+    MAIN_LIFTS.forEach(l => { inputs[l] = String(state.trainingMaxes[l] || ''); });
+    return inputs;
+  });
+  const [use1RM, setUse1RM] = useState(false);
+  const [exportMsg, setExportMsg] = useState('');
+
+  const saveTMs = () => {
+    MAIN_LIFTS.forEach(lift => {
+      let val = parseFloat(tmInputs[lift]);
+      if (isNaN(val) || val <= 0) return;
+      if (use1RM) val = roundTo5(val * 0.9); // Convert 1RM → TM (90%)
+      dispatch({ type: 'SET_TRAINING_MAX', exerciseId: lift, weight: val });
+    });
+  };
+
+  const exportData = () => {
+    const data = JSON.stringify({
+      sessions: state.sessions,
+      exerciseHistory: state.exerciseHistory,
+      trainingMaxes: state.trainingMaxes,
+      cycleWeek: state.cycleWeek,
+      cycleNumber: state.cycleNumber,
+      exportDate: new Date().toISOString(),
+    }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ironlog_export_' + todayStr() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    setExportMsg('Exported!');
+    setTimeout(() => setExportMsg(''), 2000);
+  };
+
+  return html`
+    <div class="screen fade-in">
+      <div class="screen-title">Settings</div>
+
+      <!-- Training Maxes -->
+      <div class="card">
+        <div class="card-title">Training Maxes</div>
+        <div class="card-subtitle" style="margin-bottom:12px">
+          ${use1RM ? 'Enter your 1RM (will auto-calculate TM at 90%)' : 'Enter your Training Max directly'}
+        </div>
+
+        <div style="margin-bottom:12px">
+          <button
+            class="btn btn-sm btn-ghost"
+            onClick=${() => setUse1RM(!use1RM)}
+          >
+            ${use1RM ? 'Switch to TM entry' : 'Switch to 1RM entry (auto 90%)'}
+          </button>
+        </div>
+
+        ${MAIN_LIFTS.map(lift => {
+          const ex = EXERCISES[lift];
+          const currentTM = state.trainingMaxes[lift];
+          return html`
+            <div class="input-group">
+              <label class="input-label">${ex.name}${currentTM ? ` (current TM: ${currentTM})` : ''}</label>
+              <input
+                type="number"
+                class="input-field"
+                value=${tmInputs[lift]}
+                onInput=${e => setTmInputs({ ...tmInputs, [lift]: e.target.value })}
+                placeholder=${use1RM ? '1RM in lbs' : 'TM in lbs'}
+                inputmode="numeric"
+              />
+            </div>
+          `;
+        })}
+
+        <button class="btn btn-primary" onClick=${saveTMs}>Save Training Maxes</button>
+      </div>
+
+      <!-- Cycle Management -->
+      <div class="card">
+        <div class="card-title">Cycle</div>
+        <div style="font-size:14px;margin-bottom:8px">
+          Cycle ${state.cycleNumber} · ${WEEK_SCHEMES[state.cycleWeek]?.name || 'Week ' + state.cycleWeek}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${[1, 2, 3, 4].map(w => html`
+            <button
+              class="btn btn-sm ${state.cycleWeek === w ? 'btn-primary' : 'btn-ghost'}"
+              onClick=${() => dispatch({ type: 'SET_CYCLE_WEEK', week: w })}
+            >
+              ${WEEK_SCHEMES[w].name}
+            </button>
+          `)}
+        </div>
+      </div>
+
+      <!-- Data Export -->
+      <div class="card">
+        <div class="card-title">Data</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">
+          ${state.sessions.length} workouts logged
+        </div>
+        <button class="btn btn-ghost" onClick=${exportData}>
+          ${exportMsg || 'Export All Data (JSON)'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SECTION 8: APP ROOT
 // ═══════════════════════════════════════════════════════════════
@@ -1868,6 +2413,7 @@ function App() {
     workout: html`<${WorkoutScreen} state=${state} dispatch=${dispatch} />`,
     history: html`<${HistoryScreen} state=${state} dispatch=${dispatch} />`,
     muscles: html`<${MusclesScreen} state=${state} />`,
+    settings: html`<${SettingsScreen} state=${state} dispatch=${dispatch} />`,
   };
 
   return html`
