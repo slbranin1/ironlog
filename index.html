@@ -887,6 +887,7 @@ import { html } from 'htm/preact';
 // ═══════════════════════════════════════════════════════════════
 
 const MUSCLE_GROUPS = {
+  traps:       { label: 'Traps',       view: 'both'  },
   chest:       { label: 'Chest',       view: 'front' },
   front_delts: { label: 'Front Delts', view: 'front' },
   side_delts:  { label: 'Side Delts',  view: 'both'  },
@@ -921,25 +922,25 @@ const EXERCISES = {
   overhead_press: {
     id: 'overhead_press', name: 'Overhead Press', category: 'compound',
     primaryMuscles: ['front_delts', 'side_delts'],
-    secondaryMuscles: ['triceps', 'upper_back'],
+    secondaryMuscles: ['triceps', 'upper_back', 'traps'],
     defaultSets: 3, defaultReps: 5, incrementLbs: 2.5,
   },
   deadlift: {
     id: 'deadlift', name: 'Deadlift', category: 'compound',
     primaryMuscles: ['hamstrings', 'glutes', 'lower_back'],
-    secondaryMuscles: ['quads', 'upper_back', 'lats', 'forearms'],
+    secondaryMuscles: ['quads', 'upper_back', 'lats', 'forearms', 'traps'],
     defaultSets: 1, defaultReps: 5, incrementLbs: 5,
   },
   barbell_row: {
     id: 'barbell_row', name: 'Barbell Row', category: 'compound',
     primaryMuscles: ['upper_back', 'lats'],
-    secondaryMuscles: ['rear_delts', 'biceps', 'forearms', 'lower_back'],
+    secondaryMuscles: ['rear_delts', 'biceps', 'forearms', 'lower_back', 'traps'],
     defaultSets: 3, defaultReps: 5, incrementLbs: 5,
   },
   face_pull: {
     id: 'face_pull', name: 'Face Pull', category: 'accessory',
     primaryMuscles: ['rear_delts', 'upper_back'],
-    secondaryMuscles: ['side_delts'],
+    secondaryMuscles: ['side_delts', 'traps'],
     defaultSets: 3, defaultReps: 15, incrementLbs: 5,
   },
   lat_pulldown: {
@@ -1268,6 +1269,12 @@ function formatDate(dateStr) {
 // Anatomical SVG paths from react-native-body-highlighter (MIT license)
 
 const FRONT_MUSCLE_PATHS = {
+  traps: [
+    // Left trap — neck to left shoulder slope
+    "M340 248 C330 252 310 265 290 285 Q280 296 278 310 L300 305 Q320 290 340 280 Q355 268 358 258 L358 248 Q350 244 340 248z",
+    // Right trap — neck to right shoulder slope
+    "M388 248 C398 252 418 265 438 285 Q448 296 450 310 L428 305 Q408 290 388 280 Q373 268 370 258 L370 248 Q378 244 388 248z",
+  ],
   chest: [
     "M272.91 422.84c-18.95-17.19-22-57-12.64-78.79 5.57-12.99 26.54-24.37 39.97-25.87q20.36-2.26 37.02.75c9.74 1.76 16.13 15.64 18.41 25.04 3.99 16.48 3.23 31.38 1.67 48.06q-1.35 14.35-2.05 16.89c-6.52 23.5-38.08 29.23-58.28 24.53-9.12-2.12-17.24-4.38-24.1-10.61z",
     "M416.04 435c-15.12.11-34.46-6.78-41.37-21.48q-1.88-3.99-2.84-12.18c-2.89-24.41-5.9-53.65 8.44-74.79 4.26-6.26 10.49-7.93 18.36-8.56q11.66-.92 23.32-.35c10.58.53 18.02 2.74 26.62 7.87 12.81 7.65 19.73 14.52 22.67 29.75 4.94 25.57.24 64.14-28.21 74.97q-12.26 4.67-26.99 4.77z",
@@ -1341,6 +1348,12 @@ const FRONT_MUSCLE_PATHS = {
 };
 
 const BACK_MUSCLE_PATHS = {
+  traps: [
+    // Left trap — back view, neck down to mid-back, out to shoulder
+    "M1065 248 C1050 255 1025 270 1000 295 Q985 310 980 325 L970 345 Q975 360 985 370 L1020 400 Q1050 415 1075 420 L1085 400 Q1085 370 1080 340 Q1075 300 1070 270 L1065 248z",
+    // Right trap — back view mirror
+    "M1125 248 C1140 255 1165 270 1190 295 Q1205 310 1210 325 L1220 345 Q1215 360 1205 370 L1170 400 Q1140 415 1115 420 L1105 400 Q1105 370 1110 340 Q1115 300 1120 270 L1125 248z",
+  ],
   upper_back: [
     "M987.06 381.44c-8.48-5.06-14.14-13.28-18.82-22.92q-5.3-10.92-6.46-14.04c-1.49-4.01 35.14-19.22 39.61-20.97q2.75-1.08 4.33-.72c4.33.96 6.61 9.96 7.46 13.7q5.43 23.89 14.65 55.74.78 2.7-.88 4.39c-5.37 5.5-34.69-12.08-39.89-15.18z",
     "M1017.44 583.31q-9.11-9.57-16.97-22.03-2.28-3.62-2.91-7.25c-3.28-18.82-5.77-38.04-10.52-56.55-3.53-13.73-4.74-25.19-6.61-41.43-.85-7.35-5.67-13.34-8.22-18.75q-4.93-10.47-6.44-22.88-.33-2.72 1.89-1.11c7.25 5.27 16.36 6.16 26.91 7.56 8.86 1.19 23.41-3.18 28.94-10.76 3.34-4.58 4.7-6.5 8.86-8.77a.67.66-26.4 01.92.3q10.02 21.8 19.93 43.78c2.56 5.69 12.11 15.88 10.77 21.83-3.65 16.09-9.88 31.96-16.24 47.13-9.72 23.21-18.61 46.72-27.2 70.36q-.24.67-.88.35-1.03-.52-2.23-1.78z",
