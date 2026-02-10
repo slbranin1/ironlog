@@ -1428,7 +1428,6 @@ function MuscleMapSVG({ view, planned, completed, partial, paths, outline, viewB
     <div class="muscle-view">
       <div class="view-label">${view}</div>
       <svg viewBox="${viewBox}">
-        <path d="${outline}" class="body-outline" />
         ${Object.entries(paths).map(([muscleId, pathList]) =>
           pathList.map(d => html`
             <path
