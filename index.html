@@ -1696,8 +1696,8 @@ function WeightStepper({ value, onChange, showPlates }) {
   return html`
     <div>
       <div class="stepper">
-        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 10))}>-10</button>
         <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 5))}>-5</button>
+        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 2.5))}>-2.5</button>
         ${editing ? html`
           <input
             ref=${inputRef}
@@ -1712,8 +1712,8 @@ function WeightStepper({ value, onChange, showPlates }) {
         ` : html`
           <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value}<span class="stepper-unit"> lbs</span></div>
         `}
+        <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
         <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
-        <button class="stepper-btn" onClick=${() => onChange(value + 10)}>+10</button>
       </div>
       ${showPlates && plates.length > 0 && html`
         <div class="plate-calc">Each side: ${plates.map(p => p % 1 === 0 ? p : p.toFixed(2).replace(/0$/, '')).join(' + ')}</div>
