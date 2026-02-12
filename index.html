@@ -278,6 +278,12 @@
 
     .set-row:last-child { border-bottom: none; }
 
+    .equipment-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
     .set-row-header {
       display: flex;
       align-items: center;
@@ -1058,7 +1064,7 @@ function roundTo5(weight) {
 }
 
 // Build the sets for a 5/3/1 workout day
-function build531Exercises(mainLiftId, cycleWeek, trainingMaxes) {
+function build531Exercises(mainLiftId, cycleWeek, trainingMaxes, exerciseHistory) {
   const week = WEEK_SCHEMES[cycleWeek] || WEEK_SCHEMES[1];
   const tm = trainingMaxes[mainLiftId] || 0;
   const bbbLift = BBB_SWAP[mainLiftId];
@@ -1096,14 +1102,16 @@ function build531Exercises(mainLiftId, cycleWeek, trainingMaxes) {
     })),
   });
 
-  // Accessories
+  // Accessories — pre-fill weight from exercise history
   program.accessories.forEach(acc => {
+    const next = exerciseHistory ? calculateNextWeight(acc.exerciseId, exerciseHistory) : null;
+    const lastWeight = next ? next.weight : 0;
     exercises.push({
       exerciseId: acc.exerciseId,
       category: 'accessory',
       label: 'Accessory',
       sets: Array.from({ length: acc.sets }, () => ({
-        weight: 0,
+        weight: lastWeight,
         reps: acc.reps,
         targetReps: acc.reps,
         completed: false,
@@ -1535,7 +1543,7 @@ function appReducer(state, action) {
   switch (action.type) {
     case 'START_SESSION': {
       const { startTime, lockerNumber, programId, cardio } = action;
-      const exercises = build531Exercises(programId, state.cycleWeek, state.trainingMaxes);
+      const exercises = build531Exercises(programId, state.cycleWeek, state.trainingMaxes, state.exerciseHistory);
       return {
         ...state,
         screen: 'workout',
@@ -1569,6 +1577,15 @@ function appReducer(state, action) {
           return { ...s, [field]: value };
         });
         return { ...e, sets };
+      });
+      return { ...state, activeSession: { ...session, exercises } };
+    }
+
+    case 'SET_EQUIPMENT': {
+      const session = { ...state.activeSession };
+      const exercises = session.exercises.map((e, ei) => {
+        if (ei !== action.exerciseIndex) return e;
+        return { ...e, equipment: action.equipment };
       });
       return { ...state, activeSession: { ...session, exercises } };
     }
@@ -1682,6 +1699,12 @@ function appReducer(state, action) {
       return { ...state, detailView: null };
     }
 
+    case 'RESET_APP': {
+      localStorage.removeItem('ironlog_v2');
+      localStorage.removeItem('ironlog_v1');
+      return { ...defaultState, screen: 'start' };
+    }
+
     default:
       return state;
   }
@@ -1692,7 +1715,7 @@ function appReducer(state, action) {
 // ═══════════════════════════════════════════════════════════════
 
 // --- Stepper (for weight) with tap-to-type ---
-function WeightStepper({ value, onChange, showPlates }) {
+function WeightStepper({ value, onChange, showPlates, equipment }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState('');
   const inputRef = useRef(null);
@@ -1708,7 +1731,7 @@ function WeightStepper({ value, onChange, showPlates }) {
 
   const commitEdit = () => {
     const num = parseFloat(editVal);
-    if (!isNaN(num) && num >= 0) onChange(num);
+    if (!isNaN(num)) onChange(num);
     setEditing(false);
   };
 
@@ -1717,8 +1740,8 @@ function WeightStepper({ value, onChange, showPlates }) {
   return html`
     <div>
       <div class="stepper">
-        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 5))}>-5</button>
-        <button class="stepper-btn" onClick=${() => onChange(Math.max(0, value - 2.5))}>-2.5</button>
+        <button class="stepper-btn" onClick=${() => onChange(value - 5)}>-5</button>
+        <button class="stepper-btn" onClick=${() => onChange(value - 2.5)}>-2.5</button>
         ${editing ? html`
           <input
             ref=${inputRef}
@@ -1731,7 +1754,7 @@ function WeightStepper({ value, onChange, showPlates }) {
             onKeyDown=${e => e.key === 'Enter' && commitEdit()}
           />
         ` : html`
-          <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value}<span class="stepper-unit"> lbs</span></div>
+          <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value < 0 ? value + ' (assist)' : value}<span class="stepper-unit"> lbs${equipment === 'dumbbell' ? ' each' : ''}</span></div>
         `}
         <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
         <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
@@ -2062,7 +2085,8 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
   const ex = EXERCISES[exerciseLog.exerciseId];
   const completedSets = exerciseLog.sets.filter(s => s.completed).length;
   const totalSets = exerciseLog.sets.length;
-  const isBarbell = ex && (ex.category === 'compound');
+  const equipment = exerciseLog.equipment || 'barbell';
+  const showPlates = equipment === 'barbell' && ex && (ex.category === 'compound');
 
   let badgeClass = 'pending';
   let badgeText = `0/${totalSets}`;
@@ -2091,6 +2115,12 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
 
       ${expanded && html`
         <div class="exercise-body fade-in">
+          <div class="equipment-toggle">
+            <button class="btn btn-sm ${equipment === 'barbell' ? 'btn-primary' : 'btn-ghost'}"
+              onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'barbell' })}>Barbell</button>
+            <button class="btn btn-sm ${equipment === 'dumbbell' ? 'btn-primary' : 'btn-ghost'}"
+              onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'dumbbell' })}>Dumbbell</button>
+          </div>
           ${exerciseLog.sets.map((set, si) => html`
             <div class="set-row">
               <div class="set-row-header">
@@ -2104,7 +2134,8 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
                 <${WeightStepper}
                   value=${set.weight}
                   onChange=${v => dispatch({ type: 'UPDATE_SET', exerciseIndex, setIndex: si, field: 'weight', value: v })}
-                  showPlates=${isBarbell && set.weight >= BAR_WEIGHT}
+                  showPlates=${showPlates && set.weight >= BAR_WEIGHT}
+                  equipment=${equipment}
                 />
               </div>
               <div class="set-bottom-row">
@@ -2432,6 +2463,25 @@ function SettingsScreen({ state, dispatch }) {
         </div>
         <button class="btn btn-ghost" onClick=${exportData}>
           ${exportMsg || 'Export All Data (JSON)'}
+        </button>
+      </div>
+
+      <!-- Reset App -->
+      <div class="card">
+        <div class="card-title" style="color:var(--accent-red)">Reset</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">
+          Erase all data and start fresh. This cannot be undone.
+        </div>
+        <button
+          class="btn"
+          style="background:var(--accent-red);color:#fff"
+          onClick=${() => {
+            if (confirm('Are you sure? This will delete ALL your workout data, training maxes, and history.')) {
+              dispatch({ type: 'RESET_APP' });
+            }
+          }}
+        >
+          Reset App
         </button>
       </div>
     </div>
