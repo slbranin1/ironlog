@@ -284,6 +284,17 @@
       margin-bottom: 12px;
     }
 
+    .add-exercise-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .add-exercise-row:last-child { border-bottom: none; }
+    .add-exercise-row:active { opacity: 0.6; }
+
     .set-row-header {
       display: flex;
       align-items: center;
@@ -1596,6 +1607,31 @@ function appReducer(state, action) {
       return { ...state, activeSession: { ...session, exercises } };
     }
 
+    case 'ADD_EXERCISE': {
+      const { exerciseId, sets, reps } = action;
+      const session = { ...state.activeSession };
+      const next = state.exerciseHistory ? calculateNextWeight(exerciseId, state.exerciseHistory) : null;
+      const weight = next ? next.weight : 0;
+      const newExercise = {
+        exerciseId,
+        category: 'accessory',
+        label: 'Custom',
+        sets: Array.from({ length: sets || 3 }, () => ({
+          weight,
+          reps: reps || 10,
+          targetReps: reps || 10,
+          completed: false,
+        })),
+      };
+      return { ...state, activeSession: { ...session, exercises: [...session.exercises, newExercise] } };
+    }
+
+    case 'REMOVE_EXERCISE': {
+      const session = { ...state.activeSession };
+      const exercises = session.exercises.filter((_, i) => i !== action.exerciseIndex);
+      return { ...state, activeSession: { ...session, exercises }, expandedExercise: 0 };
+    }
+
     case 'SET_EQUIPMENT': {
       const session = { ...state.activeSession };
       const exercises = session.exercises.map((e, ei) => {
@@ -2020,7 +2056,9 @@ function WorkoutScreen({ state, dispatch }) {
   const completed = getCompletedMuscles(session.exercises);
   const partial = getPartialMuscles(session.exercises);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showAddExercise, setShowAddExercise] = useState(false);
   const week = WEEK_SCHEMES[session.cycleWeek];
+  const usedExerciseIds = session.exercises.map(e => e.exerciseId);
 
   return html`
     <div class="screen fade-in">
@@ -2056,6 +2094,32 @@ function WorkoutScreen({ state, dispatch }) {
       `)}
 
       <${RestTimer} restTimer=${state.restTimer} dispatch=${dispatch} />
+
+      <!-- Add Exercise -->
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost" style="width:100%" onClick=${() => setShowAddExercise(!showAddExercise)}>
+          ${showAddExercise ? '- Cancel' : '+ Add Exercise'}
+        </button>
+        ${showAddExercise && html`
+          <div class="card fade-in" style="margin-top:8px;max-height:300px;overflow-y:auto">
+            ${Object.values(EXERCISES)
+              .filter(ex => !usedExerciseIds.includes(ex.id))
+              .map(ex => html`
+                <div class="add-exercise-row" onClick=${() => {
+                  dispatch({ type: 'ADD_EXERCISE', exerciseId: ex.id, sets: ex.defaultSets, reps: ex.defaultReps });
+                  setShowAddExercise(false);
+                }}>
+                  <div>
+                    <div style="font-weight:600;font-size:14px">${ex.name}</div>
+                    <div style="font-size:12px;color:var(--text-muted)">${ex.defaultSets}×${ex.defaultReps} · ${ex.primaryMuscles.map(m => MUSCLE_GROUPS[m]?.label).join(', ')}</div>
+                  </div>
+                  <span style="color:var(--accent-blue);font-size:20px">+</span>
+                </div>
+              `)
+            }
+          </div>
+        `}
+      </div>
 
       <div style="margin-top:16px">
         ${showEndConfirm ? html`
@@ -2135,6 +2199,8 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
               onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'barbell' })}>Barbell</button>
             <button class="btn btn-sm ${equipment === 'dumbbell' ? 'btn-primary' : 'btn-ghost'}"
               onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'dumbbell' })}>Dumbbell</button>
+            <button class="btn btn-sm" style="margin-left:auto;color:var(--accent-red);border-color:var(--accent-red)"
+              onClick=${() => { if (confirm('Remove ' + (ex?.name || 'exercise') + '?')) dispatch({ type: 'REMOVE_EXERCISE', exerciseIndex }); }}>Remove</button>
           </div>
           ${exerciseLog.sets.map((set, si) => html`
             <div class="set-row">
@@ -2257,6 +2323,39 @@ function ExerciseDetailView({ state, dispatch }) {
     const session = detail.session;
     const planned = getPlannedMuscles(session.programId);
     const completed = getCompletedMuscles(session.exercises);
+    const [copied, setCopied] = useState(false);
+
+    const generateSummary = () => {
+      let text = `🏋️ ${formatDate(session.date)} — ${PROGRAMS[session.programId]?.name || 'Custom'}\n`;
+      text += `${formatTime(session.startTime)}${session.endTime ? ` - ${formatTime(session.endTime)}` : ''}`;
+      if (session.duration) text += ` (${Math.floor(session.duration / 60)}min)`;
+      text += '\n';
+      if (session.cardio) {
+        text += `\nCardio: ${session.cardio.type} ${session.cardio.time}min`;
+        if (session.cardio.distance) text += ` ${session.cardio.distance}mi`;
+        if (session.cardio.pace) text += ` @ ${session.cardio.pace}`;
+        text += '\n';
+      }
+      session.exercises.forEach(se => {
+        const ex = EXERCISES[se.exerciseId];
+        text += `\n${ex?.name || se.exerciseId}${se.equipment === 'dumbbell' ? ' (DB)' : ''}:`;
+        se.sets.forEach((s, i) => {
+          const status = s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—';
+          text += `\n  Set ${i+1}: ${s.weight} lbs × ${s.reps} ${status}`;
+          if (s.notes) text += ` — ${s.notes}`;
+        });
+        text += '\n';
+      });
+      return text;
+    };
+
+    const copyToClipboard = () => {
+      navigator.clipboard.writeText(generateSummary()).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    };
+
     return html`
       <div class="screen fade-in">
         <button class="back-btn" onClick=${() => dispatch({ type: 'BACK_FROM_DETAIL' })}>← Back</button>
@@ -2266,6 +2365,9 @@ function ExerciseDetailView({ state, dispatch }) {
           ${session.duration ? ` · ${Math.floor(session.duration / 60)}min` : ''}
           ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
         </div>
+        <button class="btn btn-ghost" style="margin-bottom:12px;width:100%" onClick=${copyToClipboard}>
+          ${copied ? 'Copied!' : 'Copy Summary for Telegram'}
+        </button>
         <${MuscleMap} planned=${planned} completed=${completed} partial=${[]} />
         ${session.exercises.map(se => {
           const ex = EXERCISES[se.exerciseId];
