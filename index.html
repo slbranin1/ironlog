@@ -310,6 +310,21 @@
       justify-content: space-between;
     }
 
+    .set-notes {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 6px 10px;
+      font-size: 13px;
+      margin-top: 6px;
+      outline: none;
+      font-family: inherit;
+    }
+    .set-notes::placeholder { color: var(--text-muted); }
+    .set-notes:focus { border-color: var(--accent-blue); }
+
     .set-check {
       width: 48px;
       height: 48px;
@@ -2153,6 +2168,13 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
                   ${set.completed ? (set.reps >= set.targetReps ? '\u2713' : '\u2717') : ''}
                 </button>
               </div>
+              <input
+                class="set-notes"
+                type="text"
+                placeholder="Notes..."
+                value=${set.notes || ''}
+                onInput=${e => dispatch({ type: 'UPDATE_SET', exerciseIndex, setIndex: si, field: 'notes', value: e.target.value })}
+              />
             </div>
           `)}
         </div>
@@ -2255,6 +2277,7 @@ function ExerciseDetailView({ state, dispatch }) {
                   <span>Set ${i + 1}</span>
                   <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
                 </div>
+                ${s.notes ? html`<div style="font-size:12px;color:var(--text-muted);padding:2px 0 4px 0;font-style:italic">${s.notes}</div>` : ''}
               `)}
             </div>
           `;
