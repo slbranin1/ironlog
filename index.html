@@ -1829,9 +1829,31 @@ function RepStepper({ value, onChange }) {
 }
 
 // --- Rest Timer ---
+function playBell() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Bell: two sine tones with decay
+    [880, 1174.66].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + 1.5 + i * 0.15);
+    });
+  } catch (e) {}
+}
+
 function RestTimer({ restTimer, dispatch }) {
+  const bellPlayed = useRef(false);
+
   useEffect(() => {
     if (!restTimer || !restTimer.active) return;
+    bellPlayed.current = false;
     const id = setInterval(() => dispatch({ type: 'REST_TIMER_TICK' }), 1000);
     return () => clearInterval(id);
   }, [restTimer?.active]);
@@ -1842,6 +1864,11 @@ function RestTimer({ restTimer, dispatch }) {
   const secs = restTimer.remaining % 60;
   const pct = restTimer.seconds > 0 ? ((restTimer.seconds - restTimer.remaining) / restTimer.seconds) * 100 : 100;
   const done = restTimer.remaining <= 0;
+
+  if (done && !bellPlayed.current) {
+    bellPlayed.current = true;
+    playBell();
+  }
 
   return html`
     <div class="rest-timer-overlay">
