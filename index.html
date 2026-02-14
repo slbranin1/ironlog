@@ -115,6 +115,25 @@
     }
 
     .nav-item.active { color: var(--accent-blue); }
+
+    .coach-msg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--accent-blue);
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
     .nav-item svg { width: 22px; height: 22px; margin-bottom: 2px; }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -2075,7 +2094,7 @@ function getPlannedMuscles(dayId) {
 }
 
 // --- Active Workout Screen ---
-function WorkoutScreen({ state, dispatch }) {
+function WorkoutScreen({ state, dispatch, syncToCoach, syncing }) {
   const session = state.activeSession;
   if (!session) return null;
 
@@ -2158,7 +2177,12 @@ function WorkoutScreen({ state, dispatch }) {
             </div>
           </div>
         ` : html`
-          <button class="btn btn-ghost" onClick=${() => setShowEndConfirm(true)}>End Workout</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" style="flex:1" onClick=${syncToCoach} disabled=${syncing}>
+              ${syncing ? 'Syncing...' : 'Sync with Coach'}
+            </button>
+            <button class="btn btn-ghost" style="flex:1" onClick=${() => setShowEndConfirm(true)}>End Workout</button>
+          </div>
         `}
       </div>
     </div>
@@ -2510,7 +2534,7 @@ function MusclesScreen({ state }) {
 }
 
 // --- Settings Screen ---
-function SettingsScreen({ state, dispatch }) {
+function SettingsScreen({ state, dispatch, syncToCoach, syncing }) {
   const [tmInputs, setTmInputs] = useState(() => {
     const inputs = {};
     MAIN_LIFTS.forEach(l => { inputs[l] = String(state.trainingMaxes[l] || ''); });
@@ -2613,9 +2637,14 @@ function SettingsScreen({ state, dispatch }) {
         <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">
           ${state.sessions.length} workouts logged
         </div>
-        <button class="btn btn-ghost" onClick=${exportData}>
-          ${exportMsg || 'Export All Data (JSON)'}
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" style="flex:1" onClick=${exportData}>
+            ${exportMsg || 'Export JSON'}
+          </button>
+          <button class="btn btn-primary" style="flex:1" onClick=${syncToCoach} disabled=${syncing}>
+            ${syncing ? 'Syncing...' : 'Sync with Coach'}
+          </button>
+        </div>
       </div>
 
       <!-- Reset App -->
@@ -2644,22 +2673,78 @@ function SettingsScreen({ state, dispatch }) {
 // SECTION 8: APP ROOT
 // ═══════════════════════════════════════════════════════════════
 
+const API_BASE = window.location.origin;
+let lastCommandTs = null;
+
 function App() {
   const [state, dispatch] = useReducer(appReducer, null, initState);
+  const [coachMsg, setCoachMsg] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
+  // Poll for commands from coach (me)
+  useEffect(() => {
+    async function pollCommands() {
+      try {
+        const resp = await fetch(API_BASE + '/api/commands?t=' + Date.now());
+        const data = await resp.json();
+        if (data.updatedAt && data.updatedAt !== lastCommandTs) {
+          lastCommandTs = data.updatedAt;
+          if (data.actions && data.actions.length > 0) {
+            data.actions.forEach(action => dispatch(action));
+          }
+          if (data.message) {
+            setCoachMsg(data.message);
+            setTimeout(() => setCoachMsg(null), 8000);
+          }
+        }
+      } catch (e) {}
+    }
+    pollCommands();
+    const id = setInterval(pollCommands, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Sync state to coach
+  const syncToCoach = async () => {
+    setSyncing(true);
+    try {
+      await fetch(API_BASE + '/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activeSession: stateRef.current.activeSession,
+          trainingMaxes: stateRef.current.trainingMaxes,
+          sessions: stateRef.current.sessions,
+          exerciseHistory: stateRef.current.exerciseHistory,
+          cycleWeek: stateRef.current.cycleWeek,
+          cycleNumber: stateRef.current.cycleNumber,
+        }),
+      });
+      setCoachMsg('State synced to coach!');
+      setTimeout(() => setCoachMsg(null), 3000);
+    } catch (e) {
+      setCoachMsg('Sync failed — try again');
+      setTimeout(() => setCoachMsg(null), 3000);
+    }
+    setSyncing(false);
+  };
+
   const screenMap = {
     start: html`<${StartScreen} state=${state} dispatch=${dispatch} />`,
-    workout: html`<${WorkoutScreen} state=${state} dispatch=${dispatch} />`,
+    workout: html`<${WorkoutScreen} state=${state} dispatch=${dispatch} syncToCoach=${syncToCoach} syncing=${syncing} />`,
     history: html`<${HistoryScreen} state=${state} dispatch=${dispatch} />`,
     muscles: html`<${MusclesScreen} state=${state} />`,
-    settings: html`<${SettingsScreen} state=${state} dispatch=${dispatch} />`,
+    settings: html`<${SettingsScreen} state=${state} dispatch=${dispatch} syncToCoach=${syncToCoach} syncing=${syncing} />`,
   };
 
   return html`
+    ${coachMsg && html`<div class="coach-msg">${coachMsg}</div>`}
     ${screenMap[state.screen] || screenMap.start}
     <${NavBar} screen=${state.screen} dispatch=${dispatch} />
   `;
