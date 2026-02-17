@@ -1660,23 +1660,9 @@ function appReducer(state, action) {
 
     case 'SET_EQUIPMENT': {
       const session = { ...state.activeSession };
-      const prevEquipment = session.exercises[action.exerciseIndex].equipment || 'barbell';
-      const newEquipment = action.equipment;
       const exercises = session.exercises.map((e, ei) => {
         if (ei !== action.exerciseIndex) return e;
-        // Convert weights when switching between barbell and dumbbell
-        // Barbell weight = bar (45) + plates. Dumbbell weight = per-hand weight.
-        // Barbell → Dumbbell: subtract bar, divide by 2 (plate weight per side)
-        // Dumbbell → Barbell: multiply by 2, add bar back
-        let sets = e.sets;
-        if (prevEquipment !== newEquipment) {
-          if (prevEquipment === 'barbell' && newEquipment === 'dumbbell') {
-            sets = e.sets.map(s => ({ ...s, weight: Math.max(5, roundTo5((s.weight - BAR_WEIGHT) / 2)) }));
-          } else if (prevEquipment === 'dumbbell' && newEquipment === 'barbell') {
-            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight * 2 + BAR_WEIGHT) }));
-          }
-        }
-        return { ...e, equipment: newEquipment, sets };
+        return { ...e, equipment: action.equipment };
       });
       return { ...state, activeSession: { ...session, exercises } };
     }
@@ -1845,13 +1831,16 @@ function WeightStepper({ value, onChange, showPlates, equipment }) {
             onKeyDown=${e => e.key === 'Enter' && commitEdit()}
           />
         ` : html`
-          <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value < 0 ? value + ' (assist)' : value}<span class="stepper-unit"> lbs${equipment === 'dumbbell' ? ' each' : ''}</span></div>
+          <div class="stepper-value" onClick=${startEdit} style="cursor:pointer">${value < 0 ? value + ' (assist)' : value}<span class="stepper-unit"> lbs</span></div>
         `}
         <button class="stepper-btn" onClick=${() => onChange(value + 2.5)}>+2.5</button>
         <button class="stepper-btn" onClick=${() => onChange(value + 5)}>+5</button>
       </div>
       ${showPlates && plates.length > 0 && html`
         <div class="plate-calc">Each side: ${plates.map(p => p % 1 === 0 ? p : p.toFixed(2).replace(/0$/, '')).join(' + ')}</div>
+      `}
+      ${equipment === 'dumbbell' && value > 0 && html`
+        <div class="plate-calc">${Math.round(value / 2 * 10) / 10} lbs each dumbbell</div>
       `}
     </div>
   `;
@@ -2419,7 +2408,7 @@ function ExerciseDetailView({ state, dispatch }) {
         text += `\n${ex?.name || se.exerciseId}${se.equipment === 'dumbbell' ? ' (DB)' : ''}:`;
         se.sets.forEach((s, i) => {
           const status = s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—';
-          text += `\n  Set ${i+1}: ${s.weight} lbs${se.equipment === 'dumbbell' ? ' each' : ''} × ${s.reps} ${status}`;
+          text += `\n  Set ${i+1}: ${s.weight} lbs × ${s.reps} ${status}`;
           if (s.notes) text += ` — ${s.notes}`;
         });
         text += '\n';
@@ -2455,7 +2444,7 @@ function ExerciseDetailView({ state, dispatch }) {
               ${se.sets.map((s, i) => html`
                 <div class="detail-row">
                   <span>Set ${i + 1}</span>
-                  <span>${s.weight} lbs${se.equipment === 'dumbbell' ? ' ea' : ''} × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
+                  <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
                 </div>
                 ${s.notes ? html`<div style="font-size:12px;color:var(--text-muted);padding:2px 0 4px 0;font-style:italic">${s.notes}</div>` : ''}
               `)}
