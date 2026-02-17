@@ -1665,14 +1665,15 @@ function appReducer(state, action) {
       const exercises = session.exercises.map((e, ei) => {
         if (ei !== action.exerciseIndex) return e;
         // Convert weights when switching between barbell and dumbbell
+        // Barbell weight = bar (45) + plates. Dumbbell weight = per-hand weight.
+        // Barbell → Dumbbell: subtract bar, divide by 2 (plate weight per side)
+        // Dumbbell → Barbell: multiply by 2, add bar back
         let sets = e.sets;
         if (prevEquipment !== newEquipment) {
           if (prevEquipment === 'barbell' && newEquipment === 'dumbbell') {
-            // Barbell total → per-dumbbell: divide by 2
-            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight / 2) }));
+            sets = e.sets.map(s => ({ ...s, weight: Math.max(5, roundTo5((s.weight - BAR_WEIGHT) / 2)) }));
           } else if (prevEquipment === 'dumbbell' && newEquipment === 'barbell') {
-            // Per-dumbbell → barbell total: multiply by 2
-            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight * 2) }));
+            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight * 2 + BAR_WEIGHT) }));
           }
         }
         return { ...e, equipment: newEquipment, sets };
