@@ -994,24 +994,28 @@ const EXERCISES = {
     primaryMuscles: ['rear_delts', 'upper_back'],
     secondaryMuscles: ['side_delts', 'traps'],
     defaultSets: 3, defaultReps: 15, incrementLbs: 5,
+    equipmentType: 'cable',
   },
   lat_pulldown: {
     id: 'lat_pulldown', name: 'Lat Pulldown', category: 'accessory',
     primaryMuscles: ['lats', 'upper_back'],
     secondaryMuscles: ['biceps', 'rear_delts', 'forearms'],
     defaultSets: 3, defaultReps: 10, incrementLbs: 5,
+    equipmentType: 'cable',
   },
   chin_up: {
     id: 'chin_up', name: 'Chin-Up', category: 'compound',
     primaryMuscles: ['lats', 'biceps'],
     secondaryMuscles: ['upper_back', 'forearms'],
     defaultSets: 3, defaultReps: 8, incrementLbs: 5,
+    equipmentType: 'bodyweight',
   },
   dip: {
     id: 'dip', name: 'Dip', category: 'compound',
     primaryMuscles: ['chest', 'triceps'],
     secondaryMuscles: ['front_delts'],
     defaultSets: 3, defaultReps: 8, incrementLbs: 5,
+    equipmentType: 'bodyweight',
   },
   romanian_deadlift: {
     id: 'romanian_deadlift', name: 'Romanian Deadlift', category: 'compound',
@@ -1024,12 +1028,14 @@ const EXERCISES = {
     primaryMuscles: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings', 'adductors'],
     defaultSets: 3, defaultReps: 10, incrementLbs: 10,
+    equipmentType: 'machine',
   },
   calf_raise: {
     id: 'calf_raise', name: 'Calf Raise', category: 'accessory',
     primaryMuscles: ['calves'],
     secondaryMuscles: [],
     defaultSets: 3, defaultReps: 15, incrementLbs: 5,
+    equipmentType: 'machine',
   },
   barbell_curl: {
     id: 'barbell_curl', name: 'Barbell Curl', category: 'accessory',
@@ -1042,6 +1048,7 @@ const EXERCISES = {
     primaryMuscles: ['triceps'],
     secondaryMuscles: [],
     defaultSets: 3, defaultReps: 12, incrementLbs: 5,
+    equipmentType: 'cable',
   },
 };
 
@@ -1313,7 +1320,7 @@ function todayStr() {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1653,9 +1660,22 @@ function appReducer(state, action) {
 
     case 'SET_EQUIPMENT': {
       const session = { ...state.activeSession };
+      const prevEquipment = session.exercises[action.exerciseIndex].equipment || 'barbell';
+      const newEquipment = action.equipment;
       const exercises = session.exercises.map((e, ei) => {
         if (ei !== action.exerciseIndex) return e;
-        return { ...e, equipment: action.equipment };
+        // Convert weights when switching between barbell and dumbbell
+        let sets = e.sets;
+        if (prevEquipment !== newEquipment) {
+          if (prevEquipment === 'barbell' && newEquipment === 'dumbbell') {
+            // Barbell total → per-dumbbell: divide by 2
+            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight / 2) }));
+          } else if (prevEquipment === 'dumbbell' && newEquipment === 'barbell') {
+            // Per-dumbbell → barbell total: multiply by 2
+            sets = e.sets.map(s => ({ ...s, weight: roundTo5(s.weight * 2) }));
+          }
+        }
+        return { ...e, equipment: newEquipment, sets };
       });
       return { ...state, activeSession: { ...session, exercises } };
     }
@@ -2112,7 +2132,7 @@ function WorkoutScreen({ state, dispatch, syncToCoach, syncing }) {
         <div>
           <div class="info">${PROGRAMS[session.programId]?.name || 'Workout'}</div>
           <div class="meta">
-            ${week?.name || ''} · ${formatTime(session.startTime)}
+            ${formatDate(session.date)} · ${week?.name || ''} · ${formatTime(session.startTime)}
             ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
           </div>
         </div>
@@ -2215,7 +2235,9 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
   const ex = EXERCISES[exerciseLog.exerciseId];
   const completedSets = exerciseLog.sets.filter(s => s.completed).length;
   const totalSets = exerciseLog.sets.length;
-  const equipment = exerciseLog.equipment || 'barbell';
+  const fixedEquipment = ex?.equipmentType; // cable, machine, bodyweight = no barbell/dumbbell toggle
+  const isFreeWeight = !fixedEquipment || fixedEquipment === 'barbell' || fixedEquipment === 'dumbbell';
+  const equipment = isFreeWeight ? (exerciseLog.equipment || 'barbell') : fixedEquipment;
   const showPlates = equipment === 'barbell' && ex && (ex.category === 'compound');
 
   let badgeClass = 'pending';
@@ -2246,10 +2268,14 @@ function ExerciseCard({ exerciseLog, exerciseIndex, expanded, exerciseHistory, d
       ${expanded && html`
         <div class="exercise-body fade-in">
           <div class="equipment-toggle">
-            <button class="btn btn-sm ${equipment === 'barbell' ? 'btn-primary' : 'btn-ghost'}"
-              onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'barbell' })}>Barbell</button>
-            <button class="btn btn-sm ${equipment === 'dumbbell' ? 'btn-primary' : 'btn-ghost'}"
-              onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'dumbbell' })}>Dumbbell</button>
+            ${isFreeWeight ? html`
+              <button class="btn btn-sm ${equipment === 'barbell' ? 'btn-primary' : 'btn-ghost'}"
+                onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'barbell' })}>Barbell</button>
+              <button class="btn btn-sm ${equipment === 'dumbbell' ? 'btn-primary' : 'btn-ghost'}"
+                onClick=${() => dispatch({ type: 'SET_EQUIPMENT', exerciseIndex, equipment: 'dumbbell' })}>Dumbbell</button>
+            ` : html`
+              <span class="btn btn-sm btn-ghost" style="cursor:default;opacity:0.6">${fixedEquipment === 'cable' ? 'Cable' : fixedEquipment === 'machine' ? 'Machine' : 'Bodyweight'}</span>
+            `}
             <button class="btn btn-sm" style="margin-left:auto;color:var(--accent-red);border-color:var(--accent-red)"
               onClick=${() => { if (confirm('Remove ' + (ex?.name || 'exercise') + '?')) dispatch({ type: 'REMOVE_EXERCISE', exerciseIndex }); }}>Remove</button>
           </div>
@@ -2392,7 +2418,7 @@ function ExerciseDetailView({ state, dispatch }) {
         text += `\n${ex?.name || se.exerciseId}${se.equipment === 'dumbbell' ? ' (DB)' : ''}:`;
         se.sets.forEach((s, i) => {
           const status = s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—';
-          text += `\n  Set ${i+1}: ${s.weight} lbs × ${s.reps} ${status}`;
+          text += `\n  Set ${i+1}: ${s.weight} lbs${se.equipment === 'dumbbell' ? ' each' : ''} × ${s.reps} ${status}`;
           if (s.notes) text += ` — ${s.notes}`;
         });
         text += '\n';
@@ -2428,7 +2454,7 @@ function ExerciseDetailView({ state, dispatch }) {
               ${se.sets.map((s, i) => html`
                 <div class="detail-row">
                   <span>Set ${i + 1}</span>
-                  <span>${s.weight} lbs × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
+                  <span>${s.weight} lbs${se.equipment === 'dumbbell' ? ' ea' : ''} × ${s.reps} ${s.completed ? (s.reps >= (s.targetReps || 0) ? '✓' : '✗') : '—'}</span>
                 </div>
                 ${s.notes ? html`<div style="font-size:12px;color:var(--text-muted);padding:2px 0 4px 0;font-style:italic">${s.notes}</div>` : ''}
               `)}
