@@ -1320,7 +1320,7 @@ function todayStr() {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2132,7 +2132,7 @@ function WorkoutScreen({ state, dispatch, syncToCoach, syncing }) {
         <div>
           <div class="info">${PROGRAMS[session.programId]?.name || 'Workout'}</div>
           <div class="meta">
-            ${formatDate(session.date)} · ${week?.name || ''} · ${formatTime(session.startTime)}
+            ${week?.name || ''} · ${formatTime(session.startTime)}
             ${session.lockerNumber ? ` · Locker ${session.lockerNumber}` : ''}
           </div>
         </div>
