@@ -1,5 +1,10 @@
 {
-  "actions": [],
-  "updatedAt": null,
-  "message": null
+  "actions": [
+    { "type": "SET_TRAINING_MAX", "lift": "squat", "value": 135 },
+    { "type": "SET_TRAINING_MAX", "lift": "bench_press", "value": 115 },
+    { "type": "SET_TRAINING_MAX", "lift": "deadlift", "value": 165 },
+    { "type": "SET_TRAINING_MAX", "lift": "overhead_press", "value": 75 }
+  ],
+  "updatedAt": "2026-02-18T21:00:00Z",
+  "message": "Coach updated all training maxes. Squat 135, Bench 115, DL 165, OHP 75."
 }
