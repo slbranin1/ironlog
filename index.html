@@ -656,6 +656,78 @@
       font-weight: 600;
     }
 
+    /* Stats grid for exercise detail */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .trend-up { color: var(--accent-green); }
+    .trend-down { color: var(--accent-red); }
+    .trend-flat { color: var(--text-secondary); }
+
+    /* Sparkline in exercise progress cards */
+    .sparkline-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sparkline-row svg {
+      flex-shrink: 0;
+    }
+
+    /* Range filter buttons */
+    .range-filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .range-btn {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .range-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+      border-color: var(--accent-blue);
+    }
+
     /* ═══════════════════════════════════════════════════════════════
        SESSION HEADER
        ═══════════════════════════════════════════════════════════════ */
@@ -2386,15 +2458,39 @@ function HistoryScreen({ state, dispatch }) {
           <div class="input-label" style="margin-bottom:12px">Exercise Progress</div>
           ${Object.entries(state.exerciseHistory).map(([exId, data]) => {
             const ex = EXERCISES[exId];
+            const pts = data.history.slice(0, 10).reverse();
+            const minW = Math.min(...pts.map(p => p.weight));
+            const maxW = Math.max(...pts.map(p => p.weight));
+            const range = maxW - minW || 1;
+            const sparkW = 80, sparkH = 24;
+            const sparkPath = pts.length > 1
+              ? pts.map((p, i) => {
+                  const x = (i / (pts.length - 1)) * sparkW;
+                  const y = sparkH - ((p.weight - minW) / range) * (sparkH - 4) - 2;
+                  return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+                }).join(' ')
+              : null;
+            const trendColor = pts.length > 1
+              ? (pts[pts.length-1].weight > pts[0].weight ? 'var(--accent-green)' : pts[pts.length-1].weight < pts[0].weight ? 'var(--accent-red)' : 'var(--text-secondary)')
+              : 'var(--text-secondary)';
             return html`
               <div
                 class="history-card"
                 onClick=${() => dispatch({ type: 'VIEW_DETAIL', detail: { type: 'exercise', exerciseId: exId } })}
               >
-                <div class="history-date">${ex?.name || exId}</div>
-                <div class="history-meta">
-                  Last: ${data.lastWeight} lbs · ${data.history.length} sessions
-                  ${data.consecutiveFailures > 0 ? ` · ${data.consecutiveFailures} consecutive fail(s)` : ''}
+                <div class="sparkline-row">
+                  <div>
+                    <div class="history-date">${ex?.name || exId}</div>
+                    <div class="history-meta">
+                      Last: ${data.lastWeight} lbs · ${data.history.length} sessions
+                      ${data.consecutiveFailures > 0 ? ` · ${data.consecutiveFailures} fail(s)` : ''}
+                    </div>
+                  </div>
+                  ${sparkPath && html`
+                    <svg width="${sparkW}" height="${sparkH}" viewBox="0 0 ${sparkW} ${sparkH}">
+                      <polyline points=${sparkPath.replace(/[ML]/g, '')} fill="none" stroke=${trendColor} stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  `}
                 </div>
               </div>
             `;
@@ -2483,35 +2579,100 @@ function ExerciseDetailView({ state, dispatch }) {
     const data = state.exerciseHistory[exId];
     if (!data) return html`<div class="screen">No data</div>`;
 
-    const history = data.history.slice(0, 20).reverse();
+    const [rangeFilter, setRangeFilter] = useState('all');
+
+    // Filter history by range
+    const allHistory = data.history;
+    const now = new Date();
+    const filtered = rangeFilter === 'all' ? allHistory : allHistory.filter(h => {
+      const days = (now - new Date(h.date)) / (1000 * 60 * 60 * 24);
+      return rangeFilter === '30' ? days <= 30 : rangeFilter === '90' ? days <= 90 : days <= 180;
+    });
+
+    // Stats
+    const allTimeMax = allHistory.length > 0 ? Math.max(...allHistory.map(h => h.weight)) : 0;
+    const allTimeMaxDate = allHistory.find(h => h.weight === allTimeMax)?.date;
+    const last5 = allHistory.slice(0, 5);
+    const last5Avg = last5.length > 0 ? Math.round(last5.reduce((s, h) => s + h.weight, 0) / last5.length) : 0;
+    const successes = filtered.filter(h => h.allCompleted).length;
+    const successRate = filtered.length > 0 ? Math.round(successes / filtered.length * 100) : 0;
+
+    // Trend: compare first half avg to second half avg of filtered
+    const trendData = filtered.slice().reverse();
+    let trendVal = 0, trendLabel = 'Flat';
+    if (trendData.length >= 2) {
+      const first = trendData[0].weight;
+      const last = trendData[trendData.length - 1].weight;
+      trendVal = last - first;
+      trendLabel = trendVal > 0 ? `+${trendVal} lbs` : trendVal < 0 ? `${trendVal} lbs` : 'Flat';
+    }
+    const trendClass = trendVal > 0 ? 'trend-up' : trendVal < 0 ? 'trend-down' : 'trend-flat';
+
+    // Chart data
+    const history = filtered.slice(0, 30).reverse();
     const maxWeight = Math.max(...history.map(h => h.weight), 1);
-    const barWidth = Math.max(16, Math.floor(280 / history.length) - 4);
+    const barWidth = Math.max(12, Math.floor(280 / Math.max(history.length, 1)) - 4);
 
     return html`
       <div class="screen fade-in">
         <button class="back-btn" onClick=${() => dispatch({ type: 'BACK_FROM_DETAIL' })}>← Back</button>
         <div class="screen-title">${ex?.name || exId}</div>
-        <div class="card">
-          <div class="card-title">Progress</div>
-          <div class="card-subtitle">Current: ${data.lastWeight} lbs · ${data.history.length} sessions</div>
-          <div class="chart-container">
-            <svg viewBox="0 0 ${history.length * (barWidth + 4) + 20} 150">
-              ${history.map((h, i) => {
-                const barHeight = (h.weight / maxWeight) * 100;
-                const x = 10 + i * (barWidth + 4);
-                const y = 120 - barHeight;
-                return html`
-                  <rect x=${x} y=${y} width=${barWidth} height=${barHeight} class="chart-bar ${h.allCompleted ? '' : 'fail'}" />
-                  <text x=${x + barWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
-                  <text x=${x + barWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
-                `;
-              })}
-            </svg>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">All-Time PR</div>
+            <div class="stat-value">${allTimeMax}</div>
+            <div class="stat-sub">${allTimeMaxDate ? formatDate(allTimeMaxDate) : '—'}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Trend</div>
+            <div class="stat-value ${trendClass}">${trendLabel}</div>
+            <div class="stat-sub">${filtered.length} session${filtered.length !== 1 ? 's' : ''} in range</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Last 5 Avg</div>
+            <div class="stat-value">${last5Avg}</div>
+            <div class="stat-sub">lbs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Success Rate</div>
+            <div class="stat-value" style="color:${successRate >= 80 ? 'var(--accent-green)' : successRate >= 50 ? 'var(--accent-amber)' : 'var(--accent-red)'}">${successRate}%</div>
+            <div class="stat-sub">${successes}/${filtered.length} completed</div>
           </div>
         </div>
+
+        <div class="range-filters">
+          ${['30', '90', '180', 'all'].map(r => html`
+            <button class="range-btn ${rangeFilter === r ? 'active' : ''}" onClick=${() => setRangeFilter(r)}>
+              ${r === 'all' ? 'All' : r + 'd'}
+            </button>
+          `)}
+        </div>
+
+        <div class="card">
+          <div class="card-title">Progress</div>
+          <div class="card-subtitle">Current: ${data.lastWeight} lbs · ${filtered.length} sessions</div>
+          ${history.length > 0 ? html`
+            <div class="chart-container">
+              <svg viewBox="0 0 ${history.length * (barWidth + 4) + 20} 150">
+                ${history.map((h, i) => {
+                  const barHeight = (h.weight / maxWeight) * 100;
+                  const x = 10 + i * (barWidth + 4);
+                  const y = 120 - barHeight;
+                  return html`
+                    <rect x=${x} y=${y} width=${barWidth} height=${barHeight} class="chart-bar ${h.allCompleted ? '' : 'fail'}" />
+                    <text x=${x + barWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
+                    <text x=${x + barWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
+                  `;
+                })}
+              </svg>
+            </div>
+          ` : html`<div style="color:var(--text-muted);font-size:13px;padding:12px 0">No sessions in this range</div>`}
+        </div>
+
         <div class="card">
           <div class="card-title">History</div>
-          ${data.history.slice(0, 20).map(h => html`
+          ${filtered.slice(0, 30).map(h => html`
             <div class="detail-row">
               <span>${formatDate(h.date)}</span>
               <span style="color:${h.allCompleted ? 'var(--accent-green)' : 'var(--accent-red)'}">
