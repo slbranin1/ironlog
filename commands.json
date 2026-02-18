@@ -3,8 +3,102 @@
     { "type": "SET_TRAINING_MAX", "lift": "squat", "value": 135 },
     { "type": "SET_TRAINING_MAX", "lift": "bench_press", "value": 115 },
     { "type": "SET_TRAINING_MAX", "lift": "deadlift", "value": 165 },
-    { "type": "SET_TRAINING_MAX", "lift": "overhead_press", "value": 75 }
+    { "type": "SET_TRAINING_MAX", "lift": "overhead_press", "value": 75 },
+    {
+      "type": "IMPORT_EXERCISE_HISTORY",
+      "data": {
+        "bench_press": {
+          "history": [
+            { "date": "2025-11-25", "weight": 30, "allCompleted": true },
+            { "date": "2025-12-07", "weight": 35, "allCompleted": true },
+            { "date": "2025-12-13", "weight": 35, "allCompleted": true },
+            { "date": "2025-12-21", "weight": 45, "allCompleted": true },
+            { "date": "2025-12-28", "weight": 45, "allCompleted": false },
+            { "date": "2026-01-22", "weight": 45, "allCompleted": false },
+            { "date": "2026-01-31", "weight": 50, "allCompleted": true },
+            { "date": "2026-02-07", "weight": 50, "allCompleted": true }
+          ]
+        },
+        "overhead_press": {
+          "history": [
+            { "date": "2025-11-25", "weight": 20, "allCompleted": true },
+            { "date": "2025-12-13", "weight": 22.5, "allCompleted": true },
+            { "date": "2025-12-21", "weight": 25, "allCompleted": true },
+            { "date": "2025-12-28", "weight": 25, "allCompleted": false },
+            { "date": "2026-01-22", "weight": 30, "allCompleted": false },
+            { "date": "2026-01-31", "weight": 30, "allCompleted": true },
+            { "date": "2026-02-07", "weight": 30, "allCompleted": false }
+          ]
+        },
+        "barbell_curl": {
+          "history": [
+            { "date": "2025-12-01", "weight": 20, "allCompleted": false },
+            { "date": "2025-12-07", "weight": 22.5, "allCompleted": true },
+            { "date": "2025-12-14", "weight": 22.5, "allCompleted": true },
+            { "date": "2025-12-18", "weight": 25, "allCompleted": false },
+            { "date": "2026-01-17", "weight": 25, "allCompleted": false },
+            { "date": "2026-01-24", "weight": 30, "allCompleted": false },
+            { "date": "2026-02-07", "weight": 25, "allCompleted": true }
+          ]
+        },
+        "tricep_pushdown": {
+          "history": [
+            { "date": "2025-12-01", "weight": 15, "allCompleted": false },
+            { "date": "2025-12-07", "weight": 15, "allCompleted": false },
+            { "date": "2025-12-14", "weight": 42.5, "allCompleted": false },
+            { "date": "2025-12-18", "weight": 35, "allCompleted": false },
+            { "date": "2026-01-17", "weight": 50, "allCompleted": false },
+            { "date": "2026-01-24", "weight": 30, "allCompleted": true },
+            { "date": "2026-01-24", "weight": 42.5, "allCompleted": false },
+            { "date": "2026-02-07", "weight": 35, "allCompleted": true }
+          ]
+        },
+        "lat_pulldown": {
+          "history": [
+            { "date": "2025-12-18", "weight": 42.5, "allCompleted": true },
+            { "date": "2026-01-17", "weight": 50, "allCompleted": false },
+            { "date": "2026-01-24", "weight": 50, "allCompleted": false }
+          ]
+        },
+        "calf_raise": {
+          "history": [
+            { "date": "2025-11-25", "weight": 90, "allCompleted": true },
+            { "date": "2025-12-18", "weight": 135, "allCompleted": true },
+            { "date": "2026-01-31", "weight": 45, "allCompleted": true },
+            { "date": "2026-02-07", "weight": 45, "allCompleted": true }
+          ]
+        },
+        "squat": {
+          "history": [
+            { "date": "2025-11-25", "weight": 29, "allCompleted": true }
+          ]
+        },
+        "barbell_row": {
+          "history": [
+            { "date": "2025-11-25", "weight": 30, "allCompleted": true },
+            { "date": "2025-12-18", "weight": 30, "allCompleted": false }
+          ]
+        },
+        "deadlift": {
+          "history": [
+            { "date": "2026-02-17", "weight": 115, "allCompleted": true }
+          ]
+        },
+        "leg_press": {
+          "history": [
+            { "date": "2025-11-25", "weight": 100, "allCompleted": true },
+            { "date": "2025-12-07", "weight": 110, "allCompleted": true },
+            { "date": "2025-12-13", "weight": 120, "allCompleted": false },
+            { "date": "2025-12-21", "weight": 115, "allCompleted": false },
+            { "date": "2025-12-28", "weight": 112.5, "allCompleted": true },
+            { "date": "2026-01-22", "weight": 130, "allCompleted": true },
+            { "date": "2026-01-31", "weight": 135, "allCompleted": true },
+            { "date": "2026-02-07", "weight": 135, "allCompleted": false }
+          ]
+        }
+      }
+    }
   ],
-  "updatedAt": "2026-02-18T21:05:00Z",
-  "message": "Training maxes set: Squat 135, Bench 115, Deadlift 165, OHP 75"
+  "updatedAt": "2026-02-18T21:30:00Z",
+  "message": "Coach imported full workout history + set training maxes"
 }

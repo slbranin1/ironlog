@@ -1862,6 +1862,26 @@ function appReducer(state, action) {
       return { ...state, detailView: null };
     }
 
+    case 'IMPORT_EXERCISE_HISTORY': {
+      const merged = { ...state.exerciseHistory };
+      Object.entries(action.data).forEach(([exId, imported]) => {
+        const existing = merged[exId] || { lastWeight: 0, lastCompleted: false, consecutiveFailures: 0, history: [] };
+        const existingDates = new Set(existing.history.map(h => h.date));
+        const newEntries = imported.history.filter(h => !existingDates.has(h.date));
+        const combined = [...existing.history, ...newEntries]
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .slice(0, 50);
+        const latest = combined[0];
+        merged[exId] = {
+          lastWeight: latest ? latest.weight : existing.lastWeight,
+          lastCompleted: latest ? latest.allCompleted : existing.lastCompleted,
+          consecutiveFailures: existing.consecutiveFailures,
+          history: combined,
+        };
+      });
+      return { ...state, exerciseHistory: merged };
+    }
+
     case 'RESET_APP': {
       localStorage.removeItem('ironlog_v2');
       localStorage.removeItem('ironlog_v1');
