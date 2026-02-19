@@ -2930,21 +2930,26 @@ function App() {
   }, []);
 
   // Sync state to coach
+  const sendState = async (silent = false) => {
+    const url = API_BASE + '/api/state' + (silent ? '?silent=1' : '');
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activeSession: stateRef.current.activeSession,
+        trainingMaxes: stateRef.current.trainingMaxes,
+        sessions: stateRef.current.sessions,
+        exerciseHistory: stateRef.current.exerciseHistory,
+        cycleWeek: stateRef.current.cycleWeek,
+        cycleNumber: stateRef.current.cycleNumber,
+      }),
+    });
+  };
+
   const syncToCoach = async () => {
     setSyncing(true);
     try {
-      await fetch(API_BASE + '/api/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activeSession: stateRef.current.activeSession,
-          trainingMaxes: stateRef.current.trainingMaxes,
-          sessions: stateRef.current.sessions,
-          exerciseHistory: stateRef.current.exerciseHistory,
-          cycleWeek: stateRef.current.cycleWeek,
-          cycleNumber: stateRef.current.cycleNumber,
-        }),
-      });
+      await sendState(false);
       setCoachMsg('State synced to coach!');
       setTimeout(() => setCoachMsg(null), 3000);
     } catch (e) {
@@ -2953,6 +2958,19 @@ function App() {
     }
     setSyncing(false);
   };
+
+  // Auto-sync: silently save state when sets are completed (debounced)
+  const autoSyncTimer = useRef(null);
+  useEffect(() => {
+    if (!state.activeSession) return;
+    const completedSets = state.activeSession.exercises
+      .reduce((n, ex) => n + ex.sets.filter(s => s.completed).length, 0);
+    if (completedSets === 0) return;
+    clearTimeout(autoSyncTimer.current);
+    autoSyncTimer.current = setTimeout(() => {
+      sendState(true).catch(() => {});
+    }, 5000);
+  }, [state.activeSession]);
 
   const screenMap = {
     start: html`<${StartScreen} state=${state} dispatch=${dispatch} />`,
