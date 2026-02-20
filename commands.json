@@ -4,6 +4,7 @@
     { "type": "SET_TRAINING_MAX", "lift": "bench_press", "value": 115 },
     { "type": "SET_TRAINING_MAX", "lift": "deadlift", "value": 165 },
     { "type": "SET_TRAINING_MAX", "lift": "overhead_press", "value": 75 },
+    { "type": "CLEAR_EXERCISE_HISTORY", "exerciseIds": ["leg_press"] },
     {
       "type": "IMPORT_EXERCISE_HISTORY",
       "data": {
@@ -49,7 +50,6 @@
             { "date": "2025-12-18", "weight": 35, "allCompleted": false },
             { "date": "2026-01-17", "weight": 50, "allCompleted": false },
             { "date": "2026-01-24", "weight": 30, "allCompleted": true },
-            { "date": "2026-01-24", "weight": 42.5, "allCompleted": false },
             { "date": "2026-02-07", "weight": 35, "allCompleted": true }
           ]
         },
@@ -84,7 +84,7 @@
             { "date": "2026-02-17", "weight": 115, "allCompleted": true }
           ]
         },
-        "leg_press": {
+        "leg_extension": {
           "history": [
             { "date": "2025-11-25", "weight": 100, "allCompleted": true },
             { "date": "2025-12-07", "weight": 110, "allCompleted": true },
@@ -99,6 +99,6 @@
       }
     }
   ],
-  "updatedAt": "2026-02-18T21:30:00Z",
-  "message": "Coach imported full workout history + set training maxes"
+  "updatedAt": "2026-02-18T22:00:00Z",
+  "message": "Fixed: Leg Press → Leg Extension. Added Leg Extension exercise."
 }

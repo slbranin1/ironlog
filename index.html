@@ -1129,6 +1129,13 @@ const EXERCISES = {
     defaultSets: 3, defaultReps: 10, incrementLbs: 5,
     equipmentType: 'machine',
   },
+  leg_extension: {
+    id: 'leg_extension', name: 'Leg Extension', category: 'accessory',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: [],
+    defaultSets: 3, defaultReps: 10, incrementLbs: 5,
+    equipmentType: 'machine',
+  },
 };
 
 // ── 5/3/1 "Less Boring But Big" ──────────────────────────────
@@ -1867,6 +1874,12 @@ function appReducer(state, action) {
 
     case 'BACK_FROM_DETAIL': {
       return { ...state, detailView: null };
+    }
+
+    case 'CLEAR_EXERCISE_HISTORY': {
+      const cleaned = { ...state.exerciseHistory };
+      (action.exerciseIds || []).forEach(id => { delete cleaned[id]; });
+      return { ...state, exerciseHistory: cleaned };
     }
 
     case 'IMPORT_EXERCISE_HISTORY': {
