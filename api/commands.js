@@ -1,5 +1,5 @@
 // Vercel serverless function: command bridge between coach and IronLog app
-// GET  — returns pending commands (executed_at IS NULL)
+// GET  — returns pending commands as Redux actions (marks them executed atomically)
 // POST — insert a new command (requires X-Coach-Token header)
 
 const { Pool } = require('pg');
@@ -14,10 +14,27 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
+    // Atomically mark pending commands as executed and return them as Redux actions
     const { rows } = await pool.query(
-      'SELECT * FROM ironlog_commands WHERE executed_at IS NULL ORDER BY created_at ASC'
+      `UPDATE ironlog_commands
+       SET executed_at = NOW()
+       WHERE executed_at IS NULL
+       RETURNING id, action, payload, note, created_at`
     );
-    return res.status(200).json({ actions: [], commands: rows });
+
+    if (!rows.length) {
+      return res.status(200).json({ actions: [], updatedAt: null });
+    }
+
+    const actions = rows.map(r => r.payload).filter(Boolean);
+    const updatedAt = new Date(rows[rows.length - 1].created_at).toISOString();
+    const messageRow = rows.find(r => r.action === 'message');
+
+    return res.status(200).json({
+      actions,
+      updatedAt,
+      message: messageRow ? (messageRow.payload?.text || null) : null,
+    });
   }
 
   if (req.method === 'POST') {
