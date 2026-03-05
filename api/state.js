@@ -1,16 +1,7 @@
-// Vercel serverless function: receives app state, stores it, and forwards to Telegram
-// POST — app sends its current session/state, we store + forward summary to Telegram
-// GET  — returns the latest synced state (for coach to read)
-
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
-const STATE_FILE = path.join('/tmp', 'ironlog-latest-state.json');
-
-// In-memory cache for warm function instances
-let cachedState = null;
-let cachedAt = null;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 function sendTelegram(text) {
   return new Promise((resolve, reject) => {
@@ -29,27 +20,6 @@ function sendTelegram(text) {
     req.write(data);
     req.end();
   });
-}
-
-function storeState(state) {
-  cachedState = state;
-  cachedAt = new Date().toISOString();
-  try {
-    fs.writeFileSync(STATE_FILE, JSON.stringify({ state, cachedAt }));
-  } catch (e) { /* /tmp may fail, that's ok — we have in-memory */ }
-}
-
-function readState() {
-  if (cachedState) return { state: cachedState, cachedAt };
-  try {
-    const raw = fs.readFileSync(STATE_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    cachedState = parsed.state;
-    cachedAt = parsed.cachedAt;
-    return parsed;
-  } catch (e) {
-    return null;
-  }
 }
 
 function formatSetDetail(se) {
@@ -73,11 +43,24 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // GET — return latest stored state
   if (req.method === 'GET') {
-    const stored = readState();
-    if (!stored) return res.status(200).json({ ok: false, message: 'No state cached. Sync from app first.' });
-    return res.status(200).json({ ok: true, ...stored });
+    const { rows } = await pool.query(
+      'SELECT * FROM ironlog_state ORDER BY synced_at DESC LIMIT 1'
+    );
+    if (!rows.length) return res.status(200).json({ ok: false, message: 'No state cached. Sync from app first.' });
+    const row = rows[0];
+    return res.status(200).json({
+      ok: true,
+      cachedAt: row.synced_at,
+      state: {
+        trainingMaxes: row.training_maxes,
+        cycleWeek: row.cycle_week,
+        cycleNumber: row.cycle_number,
+        activeSession: row.active_session,
+        sessions: row.sessions,
+        exerciseHistory: row.exercise_history,
+      },
+    });
   }
 
   if (req.method === 'POST') {
@@ -85,10 +68,20 @@ module.exports = async function handler(req, res) {
       const state = req.body;
       const silent = req.query.silent === '1';
 
-      // Always store state
-      storeState(state);
+      const { rows } = await pool.query(
+        `INSERT INTO ironlog_state (training_maxes, cycle_week, cycle_number, active_session, sessions, exercise_history)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING synced_at`,
+        [
+          state.trainingMaxes || null,
+          state.cycleWeek || null,
+          state.cycleNumber || null,
+          state.activeSession || null,
+          state.sessions || null,
+          state.exerciseHistory || null,
+        ]
+      );
+      const syncedAt = rows[0].synced_at;
 
-      // Build detailed sync message
       let text = '📊 IronLog Sync\n';
       if (state.activeSession) {
         const s = state.activeSession;
@@ -107,12 +100,11 @@ module.exports = async function handler(req, res) {
       text += 'Sessions: ' + (state.sessions || []).length;
       text += ' · Cycle: ' + (state.cycleNumber || 1) + ' / Week: ' + (state.cycleWeek || 1);
 
-      // Only send Telegram message if not a silent auto-sync
       if (!silent) {
         await sendTelegram(text);
       }
 
-      return res.status(200).json({ ok: true, cachedAt });
+      return res.status(200).json({ ok: true, cachedAt: syncedAt });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
