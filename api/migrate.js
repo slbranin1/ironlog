@@ -8,7 +8,7 @@ async function migrate() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS ironlog_state (
         id SERIAL PRIMARY KEY,
-        synced_at TIMESTAMPTZ DEFAULT NOW,
+        synced_at TIMESTAMPTZ DEFAULT NOW(),
         training_maxes JSONB,
         cycle_week INT,
         cycle_number INT,
@@ -20,7 +20,7 @@ async function migrate() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS ironlog_commands (
         id SERIAL PRIMARY KEY,
-        created_at TIMESTAMPTZ DEFAULT NOW,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
         executed_at TIMESTAMPTZ,
         action TEXT NOT NULL,
         payload JSONB,
