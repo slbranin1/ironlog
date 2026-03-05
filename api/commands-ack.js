@@ -1,3 +1,6 @@
+// Vercel serverless function: acknowledge (mark executed) commands by ID
+// POST — body {ids:[1,2,3]} — sets executed_at=NOW() for given IDs
+
 const { Pool } = require('pg');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
