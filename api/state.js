@@ -44,9 +44,15 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const { rows } = await pool.query(
-      'SELECT * FROM ironlog_state ORDER BY synced_at DESC LIMIT 1'
-    );
+    let rows;
+    try {
+      const result = await pool.query(
+        'SELECT * FROM ironlog_state ORDER BY synced_at DESC LIMIT 1'
+      );
+      rows = result.rows;
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message, hint: 'DB connection failed' });
+    }
     if (!rows.length) return res.status(200).json({ ok: false, message: 'No state cached. Sync from app first.' });
     const row = rows[0];
     return res.status(200).json({
