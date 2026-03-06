@@ -75,8 +75,17 @@ module.exports = async function handler(req, res) {
       const silent = req.query.silent === '1';
 
       const { rows } = await pool.query(
-        `INSERT INTO ironlog_state (training_maxes, cycle_week, cycle_number, active_session, sessions, exercise_history)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING synced_at`,
+        `INSERT INTO ironlog_state (id, training_maxes, cycle_week, cycle_number, active_session, sessions, exercise_history)
+         VALUES (1, $1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO UPDATE SET
+           training_maxes = EXCLUDED.training_maxes,
+           cycle_week = EXCLUDED.cycle_week,
+           cycle_number = EXCLUDED.cycle_number,
+           active_session = EXCLUDED.active_session,
+           sessions = EXCLUDED.sessions,
+           exercise_history = EXCLUDED.exercise_history,
+           synced_at = NOW()
+         RETURNING synced_at`,
         [
           state.trainingMaxes || null,
           state.cycleWeek || null,
