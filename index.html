@@ -3002,6 +3002,15 @@ function App() {
     }, 5000);
   }, [state.activeSession]);
 
+  // Auto-sync when a session completes (sessions array grows)
+  const prevSessionCount = useRef(state.sessions.length);
+  useEffect(() => {
+    if (state.sessions.length > prevSessionCount.current) {
+      prevSessionCount.current = state.sessions.length;
+      sendState(true).catch(() => {});
+    }
+  }, [state.sessions.length]);
+
   const screenMap = {
     start: html`<${StartScreen} state=${state} dispatch=${dispatch} />`,
     workout: html`<${WorkoutScreen} state=${state} dispatch=${dispatch} syncToCoach=${syncToCoach} syncing=${syncing} />`,
