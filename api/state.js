@@ -87,12 +87,12 @@ module.exports = async function handler(req, res) {
            synced_at = NOW()
          RETURNING synced_at`,
         [
-          state.trainingMaxes || null,
+          state.trainingMaxes ? JSON.stringify(state.trainingMaxes) : null,
           state.cycleWeek || null,
           state.cycleNumber || null,
-          state.activeSession || null,
-          state.sessions || null,
-          state.exerciseHistory || null,
+          state.activeSession ? JSON.stringify(state.activeSession) : null,
+          state.sessions && state.sessions.length ? JSON.stringify(state.sessions) : null,
+          state.exerciseHistory ? JSON.stringify(state.exerciseHistory) : null,
         ]
       );
       const syncedAt = rows[0].synced_at;
