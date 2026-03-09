@@ -68,7 +68,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       padding: 16px 16px calc(72px + var(--safe-bottom));
-      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: none;
     }
 
     .screen-title {
@@ -3024,7 +3024,7 @@ let lastCommandTs = null;
 
 function PullToRefresh({ onRefresh, syncing }) {
   const [pullDistance, setPullDistance] = useState(0);
-  const p = useRef({ startY: 0, active: false, distance: 0, screenEl: null });
+  const p = useRef({ startY: 0, active: false, distance: 0 });
   const latest = useRef({ onRefresh, syncing });
   const THRESHOLD = 70;
 
@@ -3032,56 +3032,55 @@ function PullToRefresh({ onRefresh, syncing }) {
 
   useEffect(() => {
     const state = p.current;
-
-    function detachMove() {
-      if (state.screenEl) {
-        state.screenEl.removeEventListener('touchmove', onTouchMove);
-        state.screenEl = null;
-      }
-    }
-
-    function onTouchStart(e) {
+    // Wait a tick for .screen to mount
+    const tid = setTimeout(() => {
       const el = document.querySelector('.screen');
-      if (!el || el.scrollTop > 0) return;
-      detachMove();
-      state.screenEl = el;
-      el.addEventListener('touchmove', onTouchMove, { passive: false });
-      state.startY = e.touches[0].clientY;
-      state.active = true;
-      state.distance = 0;
-    }
+      if (!el) return;
 
-    function onTouchMove(e) {
-      if (!state.active) return;
-      const el = state.screenEl;
-      if (!el || el.scrollTop > 0) {
-        state.active = false;
-        setPullDistance(0);
-        return;
+      function onTouchStart(e) {
+        if (el.scrollTop > 5) return; // small tolerance for sub-pixel
+        state.startY = e.touches[0].clientY;
+        state.active = true;
+        state.distance = 0;
       }
-      const dy = e.touches[0].clientY - state.startY;
-      if (dy <= 0) { state.active = false; setPullDistance(0); return; }
-      e.preventDefault();
-      state.distance = Math.min(dy * 0.5, THRESHOLD + 30);
-      setPullDistance(state.distance);
-    }
 
-    function onTouchEnd() {
-      if (!state.active) return;
-      state.active = false;
-      const d = state.distance;
-      state.distance = 0;
-      setPullDistance(0);
-      detachMove();
-      if (d >= THRESHOLD * 0.7 && !latest.current.syncing) latest.current.onRefresh();
-    }
+      function onTouchMove(e) {
+        if (!state.active) return;
+        if (el.scrollTop > 5) {
+          state.active = false;
+          setPullDistance(0);
+          return;
+        }
+        const dy = e.touches[0].clientY - state.startY;
+        if (dy <= 0) { state.active = false; setPullDistance(0); return; }
+        e.preventDefault();
+        state.distance = Math.min(dy * 0.5, THRESHOLD + 30);
+        setPullDistance(state.distance);
+      }
 
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchend', onTouchEnd);
+      function onTouchEnd() {
+        if (!state.active) return;
+        state.active = false;
+        const d = state.distance;
+        state.distance = 0;
+        setPullDistance(0);
+        if (d >= THRESHOLD * 0.7 && !latest.current.syncing) latest.current.onRefresh();
+      }
+
+      el.addEventListener('touchstart', onTouchStart, { passive: true });
+      el.addEventListener('touchmove', onTouchMove, { passive: false });
+      el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+      state._cleanup = () => {
+        el.removeEventListener('touchstart', onTouchStart);
+        el.removeEventListener('touchmove', onTouchMove);
+        el.removeEventListener('touchend', onTouchEnd);
+      };
+    }, 100);
+
     return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchend', onTouchEnd);
-      detachMove();
+      clearTimeout(tid);
+      if (state._cleanup) state._cleanup();
     };
   }, []);
 
