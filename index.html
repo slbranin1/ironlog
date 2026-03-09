@@ -1902,6 +1902,56 @@ function appReducer(state, action) {
       return { ...state, exerciseHistory: merged };
     }
 
+    case 'MERGE_SERVER_STATE': {
+      // Bidirectional merge: pull server sessions/TMs into local state
+      const serverSessions = action.sessions || [];
+      const localSessions = state.sessions || [];
+      const sKey = (s) => s.id || (s.date + ':' + s.programId);
+      const localKeys = new Set(localSessions.map(sKey));
+      // Add any server-only sessions to local
+      const serverOnly = serverSessions.filter(s => !localKeys.has(sKey(s)));
+      // For sessions in both, prefer whichever has more exercise data
+      const updatedLocal = localSessions.map(local => {
+        const key = sKey(local);
+        const server = serverSessions.find(s => sKey(s) === key);
+        if (server && (server.exercises || []).length > (local.exercises || []).length) {
+          return server;
+        }
+        return local;
+      });
+      const mergedSessions = [...updatedLocal, ...serverOnly];
+      // Merge TMs: server wins for any key it has (coach corrections)
+      const mergedTMs = { ...state.trainingMaxes, ...(action.trainingMaxes || {}) };
+      // Merge exercise history: server entries fill gaps
+      const mergedHistory = { ...state.exerciseHistory };
+      if (action.exerciseHistory) {
+        Object.entries(action.exerciseHistory).forEach(([exId, serverData]) => {
+          if (!mergedHistory[exId]) {
+            mergedHistory[exId] = serverData;
+          } else {
+            const localHist = mergedHistory[exId].history || [];
+            const serverHist = (serverData.history || []);
+            const localDates = new Set(localHist.map(h => h.date));
+            const newEntries = serverHist.filter(h => !localDates.has(h.date));
+            if (newEntries.length > 0) {
+              mergedHistory[exId] = {
+                ...mergedHistory[exId],
+                history: [...localHist, ...newEntries].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50),
+              };
+            }
+          }
+        });
+      }
+      return {
+        ...state,
+        sessions: mergedSessions,
+        trainingMaxes: mergedTMs,
+        exerciseHistory: mergedHistory,
+        cycleWeek: action.cycleWeek || state.cycleWeek,
+        cycleNumber: action.cycleNumber || state.cycleNumber,
+      };
+    }
+
     case 'RESET_APP': {
       localStorage.removeItem('ironlog_v2');
       localStorage.removeItem('ironlog_v1');
@@ -2972,10 +3022,11 @@ function App() {
   }, []);
 
   // Sync state to coach — accepts explicit state to avoid stale ref reads
+  // Returns parsed response JSON (includes mergedState for bidirectional sync)
   const sendState = async (stateToSend, silent = false) => {
     const s = stateToSend || stateRef.current;
     const url = API_BASE + '/api/state' + (silent ? '?silent=1' : '');
-    await fetch(url, {
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2987,13 +3038,23 @@ function App() {
         cycleNumber: s.cycleNumber,
       }),
     });
+    return resp.json();
   };
 
   const syncToCoach = async () => {
     setSyncing(true);
     try {
-      await sendState(state, false);
-      setCoachMsg('State synced to coach!');
+      // Push local state up AND pull merged state back (bidirectional)
+      const resp = await sendState(state, false);
+      if (resp && resp.mergedState) {
+        dispatch({ type: 'MERGE_SERVER_STATE', ...resp.mergedState });
+        const serverCount = (resp.mergedState.sessions || []).length;
+        const localCount = state.sessions.length;
+        const pulled = serverCount - localCount;
+        setCoachMsg(pulled > 0 ? 'Synced! Pulled ' + pulled + ' session(s) from coach.' : 'Synced with coach!');
+      } else {
+        setCoachMsg('Synced with coach!');
+      }
       setTimeout(() => setCoachMsg(null), 3000);
     } catch (e) {
       setCoachMsg('Sync failed — try again');

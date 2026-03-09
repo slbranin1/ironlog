@@ -146,7 +146,18 @@ module.exports = async function handler(req, res) {
         await sendTelegram(text);
       }
 
-      return res.status(200).json({ ok: true, cachedAt: syncedAt });
+      // Return merged state so the client can pull it back (bidirectional sync)
+      return res.status(200).json({
+        ok: true,
+        cachedAt: syncedAt,
+        mergedState: {
+          trainingMaxes: state.trainingMaxes || undefined,
+          cycleWeek: state.cycleWeek || undefined,
+          cycleNumber: state.cycleNumber || undefined,
+          sessions: mergedSessions,
+          exerciseHistory: state.exerciseHistory || undefined,
+        },
+      });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
