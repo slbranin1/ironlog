@@ -134,6 +134,37 @@
       from { transform: translateY(-100%); }
       to { transform: translateY(0); }
     }
+
+    /* Pull to refresh */
+    .ptr-indicator {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 52px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      gap: 8px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+    }
+    .ptr-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--text-muted);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: ptrSpin 0.7s linear infinite;
+    }
+    @keyframes ptrSpin { to { transform: rotate(360deg); } }
+
     .nav-item svg { width: 22px; height: 22px; margin-bottom: 2px; }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -2987,6 +3018,75 @@ function SettingsScreen({ state, dispatch, syncToCoach, syncing }) {
 const API_BASE = window.location.origin;
 let lastCommandTs = null;
 
+// ═══════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════
+
+function PullToRefresh({ onRefresh, syncing }) {
+  const [pullDistance, setPullDistance] = useState(0);
+  const p = useRef({ startY: 0, active: false, distance: 0 });
+  const THRESHOLD = 70;
+
+  useEffect(() => {
+    const state = p.current;
+    function getScreen() { return document.querySelector('.screen'); }
+
+    function onTouchStart(e) {
+      const el = getScreen();
+      if (!el || el.scrollTop > 0) return;
+      state.startY = e.touches[0].clientY;
+      state.active = true;
+      state.distance = 0;
+    }
+
+    function onTouchMove(e) {
+      if (!state.active) return;
+      const el = getScreen();
+      if (!el || el.scrollTop > 0) {
+        state.active = false;
+        setPullDistance(0);
+        return;
+      }
+      const dy = e.touches[0].clientY - state.startY;
+      if (dy <= 0) return;
+      e.preventDefault();
+      state.distance = Math.min(dy * 0.5, THRESHOLD + 30);
+      setPullDistance(state.distance);
+    }
+
+    function onTouchEnd() {
+      if (!state.active) return;
+      state.active = false;
+      const d = state.distance;
+      state.distance = 0;
+      setPullDistance(0);
+      if (d >= THRESHOLD * 0.7 && !syncing) onRefresh();
+    }
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [onRefresh, syncing]);
+
+  const showing = pullDistance > 5 || syncing;
+  const progress = Math.min(pullDistance / (THRESHOLD * 0.7), 1);
+  const ready = progress >= 1;
+
+  return html`
+    <div class="ptr-indicator" style="transform: translateY(${showing ? 0 : -52}px); opacity: ${showing ? 1 : 0}">
+      ${syncing
+        ? html`<div class="ptr-spinner"></div><span>Syncing...</span>`
+        : html`<span style="opacity: ${Math.max(progress, 0.3)}">${ready ? '↑ Release to sync' : '↓ Pull to sync'}</span>`
+      }
+    </div>
+  `;
+}
+
 function App() {
   const [state, dispatch] = useReducer(appReducer, null, initState);
   const [coachMsg, setCoachMsg] = useState(null);
@@ -3094,6 +3194,7 @@ function App() {
   };
 
   return html`
+    <${PullToRefresh} onRefresh=${syncToCoach} syncing=${syncing} />
     ${coachMsg && html`<div class="coach-msg">${coachMsg}</div>`}
     ${screenMap[state.screen] || screenMap.start}
     <${NavBar} screen=${state.screen} dispatch=${dispatch} />
