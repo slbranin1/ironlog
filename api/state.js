@@ -73,17 +73,44 @@ module.exports = async function handler(req, res) {
     try {
       const state = req.body;
       const silent = req.query.silent === '1';
+      const incomingSessions = Array.isArray(state.sessions) ? state.sessions : [];
+
+      // Fetch existing sessions to merge (never lose data)
+      let existingSessions = [];
+      try {
+        const existing = await pool.query('SELECT sessions FROM ironlog_state WHERE id = 1');
+        if (existing.rows.length && existing.rows[0].sessions) {
+          existingSessions = existing.rows[0].sessions;
+        }
+      } catch (e) { /* first insert, no existing data */ }
+
+      // Merge: keep all existing sessions, add any new ones from incoming
+      // Deduplicate by session id (e.g. "c2w3-ohp"), falling back to date+programId
+      const sessionKey = (s) => s.id || (s.date + ':' + s.programId);
+      const existingKeys = new Set(existingSessions.map(sessionKey));
+      const newSessions = incomingSessions.filter(s => !existingKeys.has(sessionKey(s)));
+
+      // For sessions that exist in both, prefer the incoming version (may have updated data)
+      const mergedSessions = existingSessions.map(existing => {
+        const key = sessionKey(existing);
+        const incoming = incomingSessions.find(s => sessionKey(s) === key);
+        // Prefer incoming if it has exercises and existing doesn't, or if incoming has more data
+        if (incoming && (incoming.exercises || []).length >= (existing.exercises || []).length) {
+          return incoming;
+        }
+        return existing;
+      }).concat(newSessions);
 
       const { rows } = await pool.query(
         `INSERT INTO ironlog_state (id, training_maxes, cycle_week, cycle_number, active_session, sessions, exercise_history)
          VALUES (1, $1, $2, $3, $4, $5, $6)
          ON CONFLICT (id) DO UPDATE SET
-           training_maxes = EXCLUDED.training_maxes,
-           cycle_week = EXCLUDED.cycle_week,
-           cycle_number = EXCLUDED.cycle_number,
+           training_maxes = COALESCE(EXCLUDED.training_maxes, ironlog_state.training_maxes),
+           cycle_week = COALESCE(EXCLUDED.cycle_week, ironlog_state.cycle_week),
+           cycle_number = COALESCE(EXCLUDED.cycle_number, ironlog_state.cycle_number),
            active_session = EXCLUDED.active_session,
-           sessions = EXCLUDED.sessions,
-           exercise_history = EXCLUDED.exercise_history,
+           sessions = COALESCE(EXCLUDED.sessions, ironlog_state.sessions),
+           exercise_history = COALESCE(EXCLUDED.exercise_history, ironlog_state.exercise_history),
            synced_at = NOW()
          RETURNING synced_at`,
         [
@@ -91,7 +118,7 @@ module.exports = async function handler(req, res) {
           state.cycleWeek || null,
           state.cycleNumber || null,
           state.activeSession ? JSON.stringify(state.activeSession) : null,
-          state.sessions && state.sessions.length ? JSON.stringify(state.sessions) : null,
+          JSON.stringify(mergedSessions),
           state.exerciseHistory ? JSON.stringify(state.exerciseHistory) : null,
         ]
       );
@@ -112,7 +139,7 @@ module.exports = async function handler(req, res) {
         text += Object.entries(state.trainingMaxes).map(([k, v]) => k + '=' + v).join(', ');
         text += '\n';
       }
-      text += 'Sessions: ' + (state.sessions || []).length;
+      text += 'Sessions: ' + mergedSessions.length;
       text += ' · Cycle: ' + (state.cycleNumber || 1) + ' / Week: ' + (state.cycleWeek || 1);
 
       if (!silent) {

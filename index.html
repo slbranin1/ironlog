@@ -2971,19 +2971,20 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
-  // Sync state to coach
-  const sendState = async (silent = false) => {
+  // Sync state to coach — accepts explicit state to avoid stale ref reads
+  const sendState = async (stateToSend, silent = false) => {
+    const s = stateToSend || stateRef.current;
     const url = API_BASE + '/api/state' + (silent ? '?silent=1' : '');
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        activeSession: stateRef.current.activeSession,
-        trainingMaxes: stateRef.current.trainingMaxes,
-        sessions: stateRef.current.sessions,
-        exerciseHistory: stateRef.current.exerciseHistory,
-        cycleWeek: stateRef.current.cycleWeek,
-        cycleNumber: stateRef.current.cycleNumber,
+        activeSession: s.activeSession,
+        trainingMaxes: s.trainingMaxes,
+        sessions: s.sessions,
+        exerciseHistory: s.exerciseHistory,
+        cycleWeek: s.cycleWeek,
+        cycleNumber: s.cycleNumber,
       }),
     });
   };
@@ -2991,7 +2992,7 @@ function App() {
   const syncToCoach = async () => {
     setSyncing(true);
     try {
-      await sendState(false);
+      await sendState(state, false);
       setCoachMsg('State synced to coach!');
       setTimeout(() => setCoachMsg(null), 3000);
     } catch (e) {
@@ -3010,7 +3011,7 @@ function App() {
     if (completedSets === 0) return;
     clearTimeout(autoSyncTimer.current);
     autoSyncTimer.current = setTimeout(() => {
-      sendState(true).catch(() => {});
+      sendState(state, true).catch(() => {});
     }, 5000);
   }, [state.activeSession]);
 
@@ -3019,7 +3020,7 @@ function App() {
   useEffect(() => {
     if (state.sessions.length > prevSessionCount.current) {
       prevSessionCount.current = state.sessions.length;
-      sendState(true).catch(() => {});
+      sendState(state, true).catch(() => {});
     }
   }, [state.sessions.length]);
 
