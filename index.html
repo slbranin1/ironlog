@@ -3174,6 +3174,15 @@ function App() {
     setSyncing(false);
   };
 
+  // Auto-sync on startup: pull latest from server so mobile sees sessions logged on other devices
+  useEffect(() => {
+    sendState(stateRef.current, true).then(resp => {
+      if (resp && resp.mergedState) {
+        dispatch({ type: 'MERGE_SERVER_STATE', ...resp.mergedState });
+      }
+    }).catch(() => {});
+  }, []);
+
   // Auto-sync: silently save state when sets are completed (debounced)
   const autoSyncTimer = useRef(null);
   useEffect(() => {
