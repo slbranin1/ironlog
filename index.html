@@ -674,6 +674,30 @@
       fill-opacity: 0.5;
     }
 
+    .chart-bar.bbb {
+      fill: var(--accent-amber);
+    }
+
+    .chart-bar.bbb.fail {
+      fill: var(--accent-red);
+      fill-opacity: 0.5;
+    }
+
+    .chart-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      padding-top: 4px;
+    }
+
+    .chart-section-label.bbb {
+      color: var(--accent-amber);
+      margin-top: 12px;
+    }
+
     .chart-label {
       fill: var(--text-muted);
       font-size: 9px;
@@ -2751,10 +2775,34 @@ function ExerciseDetailView({ state, dispatch }) {
     }
     const trendClass = trendVal > 0 ? 'trend-up' : trendVal < 0 ? 'trend-down' : 'trend-flat';
 
-    // Chart data
-    const history = filtered.slice(0, 30).reverse();
+    // BBB pair detection — classify each date as main or BBB based on which paired lift was heavier
+    const pairedExId = BBB_SWAP[exId];
+    const bbbDateMap = {}; // date → true if this exercise was the lighter (BBB) lift that day
+    if (pairedExId && state.exerciseHistory[pairedExId]) {
+      const pairedByDate = {};
+      state.exerciseHistory[pairedExId].history.forEach(h => { pairedByDate[h.date] = h.weight; });
+      allHistory.forEach(h => {
+        const pairedWeight = pairedByDate[h.date];
+        if (pairedWeight !== undefined) {
+          bbbDateMap[h.date] = h.weight < pairedWeight;
+        }
+      });
+    }
+    const hasBBBData = pairedExId && Object.values(bbbDateMap).some(v => v);
+
+    // Split filtered history into main sets and BBB sets
+    const mainFiltered = hasBBBData ? filtered.filter(h => !bbbDateMap[h.date]) : filtered;
+    const bbbFiltered  = hasBBBData ? filtered.filter(h =>  bbbDateMap[h.date]) : [];
+
+    // Chart data — main
+    const history = mainFiltered.slice(0, 30).reverse();
     const maxWeight = Math.max(...history.map(h => h.weight), 1);
     const barWidth = Math.max(12, Math.floor(280 / Math.max(history.length, 1)) - 4);
+
+    // Chart data — BBB
+    const bbbHistory = bbbFiltered.slice(0, 30).reverse();
+    const bbbMaxWeight = Math.max(...bbbHistory.map(h => h.weight), 1);
+    const bbbBarWidth = Math.max(12, Math.floor(280 / Math.max(bbbHistory.length, 1)) - 4);
 
     return html`
       <div class="screen fade-in">
@@ -2795,21 +2843,41 @@ function ExerciseDetailView({ state, dispatch }) {
         <div class="card">
           <div class="card-title">Progress</div>
           <div class="card-subtitle">Current: ${data.lastWeight} lbs · ${filtered.length} sessions</div>
-          ${history.length > 0 ? html`
-            <div class="chart-container">
-              <svg viewBox="0 0 ${history.length * (barWidth + 4) + 20} 150">
-                ${history.map((h, i) => {
-                  const barHeight = (h.weight / maxWeight) * 100;
-                  const x = 10 + i * (barWidth + 4);
-                  const y = 120 - barHeight;
-                  return html`
-                    <rect x=${x} y=${y} width=${barWidth} height=${barHeight} class="chart-bar ${h.allCompleted ? '' : 'fail'}" />
-                    <text x=${x + barWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
-                    <text x=${x + barWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
-                  `;
-                })}
-              </svg>
-            </div>
+          ${(history.length > 0 || bbbHistory.length > 0) ? html`
+            ${hasBBBData ? html`<div class="chart-section-label">Main Sets</div>` : ''}
+            ${history.length > 0 ? html`
+              <div class="chart-container">
+                <svg viewBox="0 0 ${history.length * (barWidth + 4) + 20} 150">
+                  ${history.map((h, i) => {
+                    const barHeight = (h.weight / maxWeight) * 100;
+                    const x = 10 + i * (barWidth + 4);
+                    const y = 120 - barHeight;
+                    return html`
+                      <rect x=${x} y=${y} width=${barWidth} height=${barHeight} class="chart-bar ${h.allCompleted ? '' : 'fail'}" />
+                      <text x=${x + barWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
+                      <text x=${x + barWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
+                    `;
+                  })}
+                </svg>
+              </div>
+            ` : ''}
+            ${hasBBBData && bbbHistory.length > 0 ? html`
+              <div class="chart-section-label bbb">BBB Sets · ${EXERCISES[pairedExId]?.name || pairedExId}</div>
+              <div class="chart-container">
+                <svg viewBox="0 0 ${bbbHistory.length * (bbbBarWidth + 4) + 20} 150">
+                  ${bbbHistory.map((h, i) => {
+                    const barHeight = (h.weight / bbbMaxWeight) * 100;
+                    const x = 10 + i * (bbbBarWidth + 4);
+                    const y = 120 - barHeight;
+                    return html`
+                      <rect x=${x} y=${y} width=${bbbBarWidth} height=${barHeight} class="chart-bar bbb ${h.allCompleted ? '' : 'fail'}" />
+                      <text x=${x + bbbBarWidth/2} y="140" class="chart-label">${h.date.slice(5)}</text>
+                      <text x=${x + bbbBarWidth/2} y=${y - 4} class="chart-value">${h.weight}</text>
+                    `;
+                  })}
+                </svg>
+              </div>
+            ` : ''}
           ` : html`<div style="color:var(--text-muted);font-size:13px;padding:12px 0">No sessions in this range</div>`}
         </div>
 
