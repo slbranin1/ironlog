@@ -2625,21 +2625,51 @@ function HistoryScreen({ state, dispatch }) {
           <div class="input-label" style="margin-bottom:12px">Exercise Progress</div>
           ${Object.entries(state.exerciseHistory).map(([exId, data]) => {
             const ex = EXERCISES[exId];
-            const pts = data.history.slice(0, 10).reverse();
-            const minW = Math.min(...pts.map(p => p.weight));
-            const maxW = Math.max(...pts.map(p => p.weight));
-            const range = maxW - minW || 1;
+
+            // BBB pair detection — same logic as ExerciseDetailView
+            const pairedExId = BBB_SWAP[exId];
+            const bbbDateMap = {};
+            if (pairedExId && state.exerciseHistory[pairedExId]) {
+              const pairedByDate = {};
+              state.exerciseHistory[pairedExId].history.forEach(h => { pairedByDate[h.date] = h.weight; });
+              data.history.forEach(h => {
+                const pairedWeight = pairedByDate[h.date];
+                if (pairedWeight !== undefined) {
+                  bbbDateMap[h.date] = h.weight < pairedWeight;
+                }
+              });
+            }
+            const hasBBBData = pairedExId && Object.values(bbbDateMap).some(v => v);
+
+            // Split history into main and BBB, then take last 10 of each
+            const mainHistory = hasBBBData ? data.history.filter(h => !bbbDateMap[h.date]) : data.history;
+            const bbbHistory  = hasBBBData ? data.history.filter(h =>  bbbDateMap[h.date]) : [];
+
+            const pts    = mainHistory.slice(0, 10).reverse();
+            const bbbPts = bbbHistory.slice(0, 10).reverse();
+
             const sparkW = 80, sparkH = 24;
-            const sparkPath = pts.length > 1
-              ? pts.map((p, i) => {
-                  const x = (i / (pts.length - 1)) * sparkW;
-                  const y = sparkH - ((p.weight - minW) / range) * (sparkH - 4) - 2;
-                  return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
-                }).join(' ')
-              : null;
+
+            const makeSparkPath = (points) => {
+              const minW = Math.min(...points.map(p => p.weight));
+              const maxW = Math.max(...points.map(p => p.weight));
+              const range = maxW - minW || 1;
+              return points.length > 1
+                ? points.map((p, i) => {
+                    const x = (i / (points.length - 1)) * sparkW;
+                    const y = sparkH - ((p.weight - minW) / range) * (sparkH - 4) - 2;
+                    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+                  }).join(' ')
+                : null;
+            };
+
+            const sparkPath    = makeSparkPath(pts);
+            const bbbSparkPath = makeSparkPath(bbbPts);
+
             const trendColor = pts.length > 1
               ? (pts[pts.length-1].weight > pts[0].weight ? 'var(--accent-green)' : pts[pts.length-1].weight < pts[0].weight ? 'var(--accent-red)' : 'var(--text-secondary)')
               : 'var(--text-secondary)';
+
             return html`
               <div
                 class="history-card"
@@ -2659,6 +2689,16 @@ function HistoryScreen({ state, dispatch }) {
                     </svg>
                   `}
                 </div>
+                ${hasBBBData && bbbSparkPath && html`
+                  <div class="sparkline-row" style="margin-top:6px">
+                    <div class="history-meta" style="color:var(--accent-amber);font-size:11px">
+                      BBB · ${EXERCISES[pairedExId]?.name || pairedExId}
+                    </div>
+                    <svg width="${sparkW}" height="${sparkH}" viewBox="0 0 ${sparkW} ${sparkH}">
+                      <polyline points=${bbbSparkPath.replace(/[ML]/g, '')} fill="none" stroke="var(--accent-amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </div>
+                `}
               </div>
             `;
           })}
